@@ -1,0 +1,49 @@
+# .github/workflows/tests.yml
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run OPC UA tests first
+        run: |
+          pytest tests/functional/adapters/test_opcua_adapter.py \
+            --cov=components --cov-report=
+
+      - name: Run other functional tests
+        run: |
+          pytest tests/functional/ \
+            -k "not opcua" \
+            --cov=components --cov-append --cov-report=
+
+      - name: Run integration tests
+        run: |
+          pytest tests/integration/ \
+            -k "not opcua" \
+            --cov=components --cov-append \
+            --cov-report=xml:coverage.xml
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false

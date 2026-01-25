@@ -1,0 +1,29 @@
+# config/network.yml
+# Network topology and connections
+
+networks:
+  - name: plant_network
+    subnet: 192.168.1.0/24
+    vlan: 10
+    description: Main plant control network
+
+  - name: scada_network
+    subnet: 192.168.2.0/24
+    vlan: 20
+    description: SCADA supervisory network
+
+  - name: corporate_network
+    subnet: 10.0.0.0/16
+    vlan: 100
+    description: Corporate IT network
+
+connections:
+  # Define which devices are on which networks
+  plant_network:
+    - turbine_plc_1
+    - substation_plc_1
+
+  scada_network:
+    - scada_server_1
+    - substation_plc_1  # Substation bridges both networks
+

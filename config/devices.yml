@@ -1,0 +1,55 @@
+# config/devices.yml
+# Define all devices in the simulation
+
+devices:
+  # Steam turbine PLCs
+  - name: turbine_plc_1
+    type: turbine_plc
+    device_id: 1
+    description: Main steam turbine PLC
+    location: Turbine Hall A
+    protocols:
+      modbus:
+        adapter: pymodbus_3114
+        host: localhost
+        port: 15020
+        device_id: 1
+        simulator: true
+
+  # Substation equipment
+  - name: substation_plc_1
+    type: substation_plc
+    device_id: 2
+    description: Main substation PLC
+    location: Substation 1
+    protocols:
+      modbus:
+        adapter: pymodbus_3114
+        host: localhost
+        port: 15021
+        device_id: 2
+        simulator: true
+      iec104:
+        adapter: c104_221
+        bind_host: 0.0.0.0
+        bind_port: 2404
+        common_address: 1
+        simulator: true
+
+  # SCADA servers
+  - name: scada_server_1
+    type: scada_server
+    device_id: 3
+    description: SCADA master station
+    location: Control Room
+    protocols:
+      modbus:
+        adapter: pymodbus_3114
+        host: localhost
+        port: 15022
+        device_id: 3
+        simulator: true
+      opcua:
+        adapter: opcua_asyncua_118
+        endpoint: opc.tcp://localhost:4840
+        simulator: true

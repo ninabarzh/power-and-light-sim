@@ -1,0 +1,37 @@
+# config/simulation.yml
+# Simulation runtime parameters
+
+simulation:
+  name: Power & Light simulation
+  description: Industrial control system simulation for the UU P&L power generation facility
+  version: 1.0.0
+
+  runtime:
+    update_interval: 1.0  # seconds
+    realtime: true
+    time_acceleration: 1.0
+
+  logging:
+    level: INFO
+    file: logs/simulation.log
+    console: true
+
+  monitoring:
+    enabled: true
+    metrics_port: 9090
+    health_check_interval: 30
+
+  scenarios:
+    - name: normal_operation
+      description: Normal plant operation
+      enabled: true
+
+    - name: turbine_fault
+      description: Turbine fault scenario
+      enabled: false
+      trigger_time: 300
+
+    - name: cyber_attack
+      description: Simulated cyber attack
+      enabled: false
+      trigger_time: 600
