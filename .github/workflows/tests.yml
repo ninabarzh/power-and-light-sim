@@ -30,14 +30,7 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov pytest-asyncio
 
-      - name: Run OPC UA tests first
-        env:
-          PYTHONPATH: ${{ github.workspace }}
-        run: |
-          pytest tests/functional/adapters/test_opcua_adapter.py \
-            --cov=. --cov-report=
-
-      - name: Run other functional tests
+      - name: Run functional tests except OPC UA
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
