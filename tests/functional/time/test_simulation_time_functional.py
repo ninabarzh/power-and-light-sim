@@ -1,6 +1,12 @@
 import asyncio
+
 import pytest
-from components.time.simulation_time import SimulationTime, TimeMode, wait_simulation_time
+
+from components.time.simulation_time import (
+    SimulationTime,
+    TimeMode,
+    wait_simulation_time,
+)
 
 
 @pytest.mark.asyncio

@@ -1,9 +1,10 @@
 import pytest
+
 from components.time.simulation_time import (
     SimulationTime,
     TimeMode,
-    wait_simulation_time,
     get_simulation_delta,
+    wait_simulation_time,
 )
 
 

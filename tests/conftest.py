@@ -1,6 +1,7 @@
 # tests/conftest.py
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from components.time.simulation_time import SimulationTime
 
