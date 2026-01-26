@@ -48,7 +48,7 @@ asyncio_mode = "auto"
 
 [tool.coverage.run]
 # Measure coverage for all source code
-source = ["components"]
+source = ["."]
 
 # Exclude test files and other non-source code
 omit = [

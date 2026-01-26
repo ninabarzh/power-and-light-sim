@@ -31,21 +31,27 @@ jobs:
           pip install pytest pytest-cov pytest-asyncio
 
       - name: Run OPC UA tests first
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           pytest tests/functional/adapters/test_opcua_adapter.py \
-            --cov=components --cov-report=
+            --cov=. --cov-report=
 
       - name: Run other functional tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           pytest tests/functional/ \
             -m "not opcua" \
-            --cov=components --cov-append --cov-report=
+            --cov=. --cov-append --cov-report=
 
       - name: Run integration tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           pytest tests/integration/ \
             -m "not opcua" \
-            --cov=components --cov-append \
+            --cov=. --cov-append \
             --cov-report=xml:coverage.xml
 
       - name: Upload to Codecov
