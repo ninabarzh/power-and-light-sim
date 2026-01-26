@@ -1,6 +1,7 @@
 # tests/test_system_state_integration.py
 
 import pytest
+
 from components.state.system_state import SystemState
 
 

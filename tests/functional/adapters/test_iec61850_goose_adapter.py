@@ -18,6 +18,7 @@ verification and state management rather than actual GOOSE communication.
 import asyncio
 
 import pytest
+
 from components.adapters.iec61850_goose_adapter import IEC61850GOOSEAdapter
 from components.protocols.iec61850_goose_protocol import IEC61850GOOSEProtocol
 

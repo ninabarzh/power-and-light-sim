@@ -15,6 +15,7 @@ Tests verify:
 import asyncio
 
 import pytest
+
 from components.adapters.c104_221 import IEC104C104Adapter
 from components.protocols.iec104_protocol import IEC104Protocol
 

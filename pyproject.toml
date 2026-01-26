@@ -1,7 +1,6 @@
 [tool.black]
 line-length = 88
 target-version = ["py312"]
-include = '\.pyi?$'
 exclude = '''
 /(
     \.venv
@@ -19,18 +18,18 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 warn_unused_configs = true
 show_error_codes = true
+warn_return_any = true
 
 [[tool.mypy.overrides]]
-module = "simulator.*"
+module = "components.*"
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = "telemetry.*"
+module = "tools.*"
 disallow_untyped_defs = true
 
 [tool.pytest.ini_options]
 testpaths = [
-    "tests/functional/adapters/test_opcua_adapter.py",
     "tests/"
 ]  # Explicitly list which directories to test
 python_files = ["test_*.py", "*_test.py"]
@@ -42,10 +41,6 @@ markers = [
     "integration: integration tests (multiple components)",
     "e2e: end-to-end tests (full scenarios)",
     "slow: tests that take longer to run",
-        # Add these for pytest-ordering:
-    "first: run tests first (pytest-ordering)",
-    "second: run tests second (pytest-ordering)",
-    "third: run tests third (pytest-ordering)",
     # Add OPC UA specific marker:
     "opcua: OPC UA protocol tests (requires server cleanup)"
 ]
@@ -53,7 +48,7 @@ asyncio_mode = "auto"
 
 [tool.coverage.run]
 # Measure coverage for all source code
-source = ["."]
+source = ["components"]
 
 # Exclude test files and other non-source code
 omit = [
@@ -72,7 +67,7 @@ omit = [
 ]
 
 [tool.coverage.report]
-# Fail if overall coverage drops below 90%
+# Fail if overall coverage drops below 85%
 fail_under = 85
 
 # Show missing lines in terminal
@@ -99,7 +94,7 @@ exclude_lines = [
 [tool.coverage.html]
 # HTML report settings
 directory = "htmlcov"
-title = "Red Lantern Simulator Coverage Report"
+title = "Power & Light Simulator Coverage Report"
 extra_css = ""
 
 [tool.coverage.xml]
@@ -145,6 +140,6 @@ exclude = [
 # Match Black's formatting style
 profile = "black"
 # Python version
-py_version = "312"
+py_version = "3.12"
 # Project's source directories for proper import classification
-src_paths = ["simulator", "telemetry", "tests"]
+src_paths = ["components", "config", "tests", "tools"]

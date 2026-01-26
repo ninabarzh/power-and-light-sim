@@ -20,6 +20,7 @@ import asyncio
 
 import pytest
 import pytest_asyncio
+
 from components.adapters.snap7_202 import Snap7Adapter202
 from components.protocols.s7_protocol import S7Protocol
 

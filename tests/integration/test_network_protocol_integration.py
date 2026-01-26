@@ -1,6 +1,7 @@
 # tests/integration/test_network_protocol_integration.py
 
 import pytest
+
 from components.network.network_simulator import NetworkSimulator
 from components.network.protocol_simulator import ProtocolSimulator
 from components.state.system_state import SystemState

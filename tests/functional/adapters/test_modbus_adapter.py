@@ -14,6 +14,7 @@ Tests verify:
 import asyncio
 
 import pytest
+
 from components.adapters.pymodbus_3114 import PyModbus3114Adapter
 from components.protocols.modbus_protocol import ModbusProtocol
 

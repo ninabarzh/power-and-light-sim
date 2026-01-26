@@ -6,6 +6,7 @@ Functional tests for Modbus RTU adapter (PyModbus 3.11.4) and protocol wrapper.
 import asyncio
 
 import pytest
+
 from components.adapters.modbus_rtu_adapter import ModbusRTUAdapter
 from components.protocols.modbus_rtu_protocol import ModbusRTUProtocol
 

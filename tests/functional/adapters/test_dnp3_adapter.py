@@ -17,6 +17,7 @@ Note: Some master mode operations are placeholders in the current implementation
 import asyncio
 
 import pytest
+
 from components.adapters.dnp3_adapter import DNP3Adapter
 from components.protocols.dnp3_protocol import DNP3Protocol
 

@@ -5,50 +5,15 @@ Functional tests for OPC UA adapter (asyncua 1.1.8).
 
 import asyncio
 import gc
-import signal
-import sys
 
 import pytest
+
 from components.adapters.opcua_asyncua_118 import OPCUAAsyncua118Adapter
 from components.protocols.opcua_protocol import OPCUAProtocol
 
-# ============================================================
-# GRACEFUL SHUTDOWN HANDLING
-# ============================================================
-
-original_handlers = {}
+pytestmark = [pytest.mark.opcua, pytest.mark.slow]
 
 
-def graceful_interrupt(signum, frame):
-    """Handle Ctrl+C gracefully for async tests."""
-    print("\n🔴 Test interrupted. Cleaning up OPC UA servers...")
-
-    try:
-        loop = asyncio.get_event_loop()
-        for task in asyncio.all_tasks(loop):
-            if not task.done():
-                task.cancel()
-    except (RuntimeError, Exception):
-        pass
-
-    if signum in original_handlers:
-        original_handlers[signum](signum, frame)
-    else:
-        sys.exit(1)
-
-
-if sys.platform != "win32":
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        original_handlers[sig] = signal.signal(sig, graceful_interrupt)
-
-
-# ============================================================
-# TEST CLASSES
-# ============================================================
-
-
-@pytest.mark.first
-@pytest.mark.opcua
 class TestOPCUAAdapter:
     """Test suite for OPC UA asyncua 1.1.8 adapter."""
 
@@ -56,7 +21,6 @@ class TestOPCUAAdapter:
     # FIXTURE DEFINITIONS
     # ============================================================
 
-    @pytest.fixture(scope="session")
     def event_loop(self):
         """Create a session-scoped event loop for all tests."""
         policy = asyncio.get_event_loop_policy()
@@ -399,7 +363,6 @@ class TestOPCUAAdapter:
 # ============================================================
 
 
-@pytest.mark.second
 class TestOPCUAProtocol:
     """Test suite for the OPCUAProtocol wrapper."""
 
