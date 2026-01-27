@@ -20,7 +20,7 @@ caution when testing real systems.
 
 Models the physical behaviour of a steam turbine generator, from shaft rotation to power output to mechanical damage.
 
-**Physical Processes Modelled:**
+**Physical processes modelled:**
 - **Shaft dynamics** - Acceleration/deceleration based on steam flow and load
 - **Thermal behaviour** - Bearing and steam temperatures with realistic time constants
 - **Vibration** - Increases with speed deviation and mechanical damage
@@ -28,7 +28,7 @@ Models the physical behaviour of a steam turbine generator, from shaft rotation 
 - **Cumulative damage** - Overspeed operation causes permanent damage
 - **Emergency protection** - Trip response and shutdown dynamics
 
-**Integration Points:**
+**Integration points:**
 - **Reads from DataStore**: Control inputs from PLC (speed setpoint, governor enable, trip)
 - **Writes to DataStore**: Telemetry (RPM, temperature, vibration, power)
 - **Uses SimulationTime**: Physics updates respect simulation time acceleration
