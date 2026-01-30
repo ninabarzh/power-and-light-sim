@@ -193,6 +193,7 @@ class PowerFlow:
 
             if not self.params.buses:
                 logger.warning("No buses defined in grid configuration")
+                self._create_default_grid()
 
         except Exception as e:
             logger.warning(f"Could not load grid configuration: {e}")

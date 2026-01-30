@@ -1,6 +1,6 @@
 # components/devices/core/base_device.py
 """
-Abstract base class for all simulated devices.
+Abstract base class for ALL simulated devices.
 
 Provides common infrastructure for:
 - DataStore registration and integration
@@ -38,13 +38,13 @@ class BaseDevice(ABC):
     """
 
     def __init__(
-        self,
-        device_name: str,
-        device_id: int,
-        data_store: DataStore,
-        description: str = "",
-        scan_interval: float = 0.1,  # 100ms default scan rate
-        log_dir: Path | None = None,
+            self,
+            device_name: str,
+            device_id: int,
+            data_store: DataStore,
+            description: str = "",
+            scan_interval: float = 0.1,  # 100ms default scan rate
+            log_dir: Path | None = None,
     ):
         """
         Initialise base device.
@@ -82,10 +82,13 @@ class BaseDevice(ABC):
         # Memory map (exposed to protocols)
         self.memory_map: dict[str, Any] = {}
 
-        # Metadata for DataStore
+        # Metadata for DataStore (includes diagnostics)
         self.metadata: dict[str, Any] = {
             "description": description,
             "scan_interval": scan_interval,
+            "last_scan_time": None,
+            "scan_count": 0,
+            "error_count": 0,
         }
 
         self.logger.info(
@@ -108,8 +111,8 @@ class BaseDevice(ABC):
         pass
 
     @abstractmethod
-    async def _initialize_memory_map(self) -> None:
-        """Initialize device-specific memory map structure."""
+    async def _initialise_memory_map(self) -> None:
+        """Initialise device-specific memory map structure."""
         pass
 
     @abstractmethod
@@ -141,37 +144,44 @@ class BaseDevice(ABC):
 
         self.logger.info(f"Starting device '{self.device_name}'")
 
-        # Register with DataStore
-        await self.data_store.register_device(
-            device_name=self.device_name,
-            device_type=self._device_type(),
-            device_id=self.device_id,
-            protocols=self._supported_protocols(),
-            metadata=self.metadata,
-        )
+        try:
+            # Register with DataStore
+            await self.data_store.register_device(
+                device_name=self.device_name,
+                device_type=self._device_type(),
+                device_id=self.device_id,
+                protocols=self._supported_protocols(),
+                metadata=self.metadata,
+            )
 
-        # Initialise memory map
-        await self._initialize_memory_map()
+            # Initialise memory map
+            await self._initialise_memory_map()
 
-        # Write initial memory map to DataStore
-        await self.data_store.bulk_write_memory(
-            self.device_name,
-            self.memory_map,
-        )
+            # Write initial memory map to DataStore
+            await self.data_store.bulk_write_memory(
+                self.device_name,
+                self.memory_map,
+            )
 
-        # Mark online
-        self._online = True
-        await self.data_store.get_device_state(self.device_name)
-        await self.data_store.system_state.update_device(
-            self.device_name,
-            online=True,
-        )
+            # Mark online in system state
+            self._online = True
+            await self.data_store.system_state.update_device(
+                self.device_name,
+                online=True,
+            )
 
-        # Start scan cycle
-        self._running = True
-        self._scan_task = asyncio.create_task(self._scan_loop())
+            # Start scan cycle
+            self._running = True
+            self._scan_task = asyncio.create_task(self._scan_loop())
 
-        self.logger.info(f"Device '{self.device_name}' started successfully")
+            self.logger.info(f"Device '{self.device_name}' started successfully")
+
+        except Exception as e:
+            self.logger.error(f"Failed to start device '{self.device_name}': {e}", exc_info=True)
+            # Cleanup on failure
+            self._online = False
+            self._running = False
+            raise
 
     async def stop(self) -> None:
         """
@@ -184,8 +194,7 @@ class BaseDevice(ABC):
 
         self.logger.info(f"Stopping device '{self.device_name}'")
 
-        # Stop scan loop
-        self._running = False
+        # Stop scan loop first (sets _running = False internally to prevent race)
         if self._scan_task:
             self._scan_task.cancel()
             try:
@@ -194,12 +203,18 @@ class BaseDevice(ABC):
                 pass
             self._scan_task = None
 
+        # Ensure running flag is cleared
+        self._running = False
+
         # Mark offline
         self._online = False
-        await self.data_store.system_state.update_device(
-            self.device_name,
-            online=False,
-        )
+        try:
+            await self.data_store.system_state.update_device(
+                self.device_name,
+                online=False,
+            )
+        except Exception as e:
+            self.logger.error(f"Error updating device state on stop: {e}")
 
         self.logger.info(f"Device '{self.device_name}' stopped")
 
@@ -207,7 +222,13 @@ class BaseDevice(ABC):
         """Reset device to initial state."""
         self.logger.info(f"Resetting device '{self.device_name}'")
         await self.stop()
-        await self._initialize_memory_map()
+
+        # Reset metadata counters
+        self.metadata["scan_count"] = 0
+        self.metadata["error_count"] = 0
+        self.metadata["last_scan_time"] = None
+
+        await self._initialise_memory_map()
         await self.start()
 
     # ----------------------------------------------------------------
@@ -225,8 +246,6 @@ class BaseDevice(ABC):
             f"(interval: {self.scan_interval}s)"
         )
 
-        _last_scan_time = self.sim_time.now()
-
         while self._running:
             try:
                 # Wait for next scan interval (simulation time aware)
@@ -241,21 +260,32 @@ class BaseDevice(ABC):
 
                 await self._scan_cycle()
 
-                # Update DataStore with new memory map
-                await self.data_store.bulk_write_memory(
-                    self.device_name,
-                    self.memory_map,
-                )
+                # Update metadata with diagnostics
+                self.metadata["last_scan_time"] = current_time
+                self.metadata["scan_count"] += 1
 
-                _last_scan_time = current_time
+                # Update DataStore with new memory map
+                try:
+                    await self.data_store.bulk_write_memory(
+                        self.device_name,
+                        self.memory_map,
+                    )
+                except Exception as e:
+                    self.logger.error(
+                        f"Failed to write memory map for '{self.device_name}': {e}"
+                    )
+                    self.metadata["error_count"] += 1
 
             except asyncio.CancelledError:
+                # Clean shutdown
+                self._running = False
                 break
             except Exception as e:
                 self.logger.error(
                     f"Error in scan cycle for '{self.device_name}': {e}",
                     exc_info=True,
                 )
+                self.metadata["error_count"] += 1
                 # Continue running despite errors
                 await asyncio.sleep(self.scan_interval)
 
@@ -346,6 +376,9 @@ class BaseDevice(ABC):
             "protocols": self._supported_protocols(),
             "memory_map_size": len(self.memory_map),
             "description": self.description,
+            "scan_count": self.metadata.get("scan_count", 0),
+            "error_count": self.metadata.get("error_count", 0),
+            "last_scan_time": self.metadata.get("last_scan_time"),
         }
 
     def __repr__(self) -> str:
