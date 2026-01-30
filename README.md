@@ -1,8 +1,8 @@
 # UU Power & Light ICS Simulator under construction
 
-Welcome to the *Unseen University Power & Light Co.* simulator — a deliberately engineered modelling and testing 
-framework for industrial control systems (ICS) and operational technology (OT) environments of the kind described in 
-our territory guides.
+Welcome to the [Unseen University Power & Light Co.](https://red.tymyrddin.dev/docs/power/territory/company) simulator, 
+a deliberately engineered modelling and testing framework for industrial control systems (ICS) and operational 
+technology (OT) environments of the kind described in our territory guides.
 
 This simulator is not a toy. It is a *causally correct, layered, testable, and extendible environment* for exploring:
 
@@ -40,8 +40,8 @@ It helps to think of this simulator as *an engineer’s tinker bench*, where:
 - protocols translate interactions into real‑world network semantics
 - security layers observe and constrain without hiding the underlying behaviour
 
-This mirrors the *key OT components* you might see in the field. From unattended substations to operator workstations, 
-each with unique responsibilities and risks.
+This mirrors the [key OT components](https://red.tymyrddin.dev/docs/power/territory/components) you might see in the 
+field. From unattended substations to operator workstations, each with unique responsibilities and risks.
 
 ## Architecture and grounding
 
@@ -124,5 +124,3 @@ Do not hesitate. Everything is designed for community development:
 *Before adding tests*, familiarise yourself with the dependency ordering in `tests/README.md`.
 
 Please respect the layering: *fix the architecture, not the test*.
-
-
