@@ -597,3 +597,63 @@ class ReactorPhysics:
                 f"{self.device_name}: SCRAM reset failed - conditions not safe"
             )
             return False
+
+    # ----------------------------------------------------------------
+    # Control interface (for PLC integration)
+    # ----------------------------------------------------------------
+
+    def set_power_setpoint(self, percent: float) -> None:
+        """Set reactor power setpoint.
+
+        Args:
+            percent: Target power as percentage of rated (0-150)
+        """
+        self._control_cache["power_setpoint_percent"] = max(0.0, min(150.0, percent))
+        logger.debug(f"{self.device_name}: Power setpoint set to {percent}%")
+
+    def set_control_rods_position(self, percent: float) -> None:
+        """Set control rod position.
+
+        Args:
+            percent: Rod position (0=fully inserted, 100=fully withdrawn)
+        """
+        self._control_cache["control_rods_position"] = max(0.0, min(100.0, percent))
+        logger.debug(f"{self.device_name}: Control rods set to {percent}%")
+
+    def set_coolant_pump_speed(self, percent: float) -> None:
+        """Set coolant pump speed.
+
+        Args:
+            percent: Pump speed as percentage (0-100)
+        """
+        self._control_cache["coolant_pump_speed"] = max(0.0, min(100.0, percent))
+        logger.debug(f"{self.device_name}: Coolant pump set to {percent}%")
+
+    def set_thaumic_dampener(self, enabled: bool) -> None:
+        """Enable or disable thaumic dampener.
+
+        Args:
+            enabled: True to enable dampener
+        """
+        self._control_cache["thaumic_dampener_enabled"] = bool(enabled)
+        logger.debug(
+            f"{self.device_name}: Thaumic dampener "
+            f"{'enabled' if enabled else 'disabled'}"
+        )
+
+    def trigger_scram(self) -> None:
+        """Trigger emergency shutdown (SCRAM)."""
+        self._control_cache["emergency_shutdown"] = True
+        logger.warning(f"{self.device_name}: SCRAM triggered")
+
+    def get_power_setpoint(self) -> float:
+        """Get current power setpoint."""
+        return self._control_cache.get("power_setpoint_percent", 0.0)
+
+    def get_control_rods_position(self) -> float:
+        """Get current control rod position."""
+        return self._control_cache.get("control_rods_position", 100.0)
+
+    def is_scram_active(self) -> bool:
+        """Check if SCRAM is active."""
+        return self._scram_active

@@ -517,7 +517,86 @@ class TurbinePhysics:
             "bearing_temperature_f": int(self.state.bearing_temperature_f),
             "vibration_mils": round(self.state.vibration_mils, 1),
             "turbine_running": self.state.shaft_speed_rpm > 100,
+            "governor_online": self._control_cache.get("governor_enabled", False),
+            "trip_active": self._control_cache.get("emergency_trip", False),
             "overspeed": self.state.shaft_speed_rpm > self.params.max_safe_speed_rpm,
             "overspeed_time_sec": int(self.state.cumulative_overspeed_time),
             "damage_percent": int(self.state.damage_level * 100),
         }
+
+    # ----------------------------------------------------------------
+    # Control interface (for PLC integration)
+    # ----------------------------------------------------------------
+
+    def set_speed_setpoint(self, rpm: float) -> None:
+        """Set turbine speed setpoint.
+
+        This directly updates the control cache, bypassing DataStore.
+        Use for direct PLC-to-physics integration.
+
+        Args:
+            rpm: Target speed in RPM
+        """
+        self._control_cache["speed_setpoint_rpm"] = max(0.0, float(rpm))
+        logger.debug(f"{self.device_name}: Speed setpoint set to {rpm} RPM")
+
+    def set_governor_enabled(self, enabled: bool) -> None:
+        """Enable or disable governor control.
+
+        Args:
+            enabled: True to enable automatic speed control
+        """
+        self._control_cache["governor_enabled"] = bool(enabled)
+        logger.debug(
+            f"{self.device_name}: Governor {'enabled' if enabled else 'disabled'}"
+        )
+
+    def trigger_emergency_trip(self) -> None:
+        """Trigger emergency shutdown.
+
+        Closes steam valves and applies emergency braking.
+        """
+        self._control_cache["emergency_trip"] = True
+        logger.warning(f"{self.device_name}: Emergency trip triggered")
+
+    def reset_trip(self) -> bool:
+        """Reset emergency trip condition.
+
+        Returns:
+            True if trip was reset, False if conditions not safe
+        """
+        # Only allow reset if turbine is below safe speed
+        if self.state.shaft_speed_rpm < self.params.rated_speed_rpm * 0.1:
+            self._control_cache["emergency_trip"] = False
+            logger.info(f"{self.device_name}: Trip reset successful")
+            return True
+        else:
+            logger.warning(
+                f"{self.device_name}: Trip reset failed - speed too high "
+                f"({self.state.shaft_speed_rpm} RPM)"
+            )
+            return False
+
+    def get_speed_setpoint(self) -> float:
+        """Get current speed setpoint.
+
+        Returns:
+            Current setpoint in RPM
+        """
+        return self._control_cache.get("speed_setpoint_rpm", 0.0)
+
+    def is_governor_enabled(self) -> bool:
+        """Check if governor is enabled.
+
+        Returns:
+            True if governor control is active
+        """
+        return self._control_cache.get("governor_enabled", False)
+
+    def is_trip_active(self) -> bool:
+        """Check if emergency trip is active.
+
+        Returns:
+            True if turbine is in emergency shutdown
+        """
+        return self._control_cache.get("emergency_trip", False)
