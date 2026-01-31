@@ -11,14 +11,18 @@ Source of truth:
 """
 
 import asyncio
-import logging
+from collections import Counter
 from typing import Any
 
+from components.security.logging_system import (
+    EventSeverity,
+    ICSLogger,
+    get_logger,
+)
 from components.state.system_state import SystemState
 from config.config_loader import ConfigLoader
 
-# Configure logging
-logger = logging.getLogger(__name__)
+__all__ = ["NetworkSimulator"]
 
 
 class NetworkSimulator:
@@ -57,6 +61,7 @@ class NetworkSimulator:
 
         self._lock = asyncio.Lock()
         self._loaded = False
+        self.logger: ICSLogger = get_logger(__name__, device="network_simulator")
 
     # ----------------------------------------------------------------
     # Configuration loading
@@ -78,10 +83,10 @@ class NetworkSimulator:
                 # Load network definitions
                 networks = config.get("networks", [])
                 if not networks:
-                    logger.warning("No networks defined in network.yml")
+                    self.logger.warning("No networks defined in network.yml")
 
                 self.networks = {net["name"]: net for net in networks}
-                logger.info(
+                self.logger.info(
                     f"Loaded {len(self.networks)} network(s): {list(self.networks.keys())}"
                 )
 
@@ -91,13 +96,13 @@ class NetworkSimulator:
 
                 for network_name, devices in connections.items():
                     if network_name not in self.networks:
-                        logger.warning(
+                        self.logger.warning(
                             f"Connection references unknown network: {network_name}"
                         )
                         continue
 
                     if not isinstance(devices, list):
-                        logger.warning(
+                        self.logger.warning(
                             f"Invalid device list for network {network_name}"
                         )
                         continue
@@ -107,25 +112,25 @@ class NetworkSimulator:
                         if self.system_state:
                             device_state = await self.system_state.get_device(device)
                             if not device_state:
-                                logger.warning(
+                                self.logger.warning(
                                     f"Network config references unregistered device: {device}"
                                 )
 
                         self.device_networks.setdefault(device, set()).add(network_name)
-                        logger.debug(
+                        self.logger.debug(
                             f"Device {device} connected to network {network_name}"
                         )
 
                 device_count = len(self.device_networks)
-                logger.info(f"Mapped {device_count} device(s) to networks")
+                self.logger.info(f"Mapped {device_count} device(s) to networks")
 
                 self._loaded = True
 
             except FileNotFoundError as e:
-                logger.error(f"Network configuration file not found: {e}")
+                self.logger.error(f"Network configuration file not found: {e}")
                 raise
             except Exception as e:
-                logger.error(f"Failed to load network configuration: {e}")
+                self.logger.error(f"Failed to load network configuration: {e}")
                 raise ValueError(f"Invalid network configuration: {e}") from e
 
     # ----------------------------------------------------------------
@@ -157,18 +162,18 @@ class NetworkSimulator:
             if self.system_state:
                 device_state = await self.system_state.get_device(node)
                 if not device_state:
-                    logger.warning(f"Exposing service on unregistered device: {node}")
+                    self.logger.warning(f"Exposing service on unregistered device: {node}")
 
             # Check if device is on any network
             if node not in self.device_networks:
-                logger.warning(
+                self.logger.warning(
                     f"Device {node} not connected to any network, "
                     f"service {protocol}:{port} may be unreachable"
                 )
 
             self.services[(node, port)] = protocol
             networks = self.device_networks.get(node, set())
-            logger.info(
+            self.logger.info(
                 f"Exposed service: {node}:{port} ({protocol}) "
                 f"on networks {networks or 'none'}"
             )
@@ -188,7 +193,7 @@ class NetworkSimulator:
             if key in self.services:
                 protocol = self.services[key]
                 del self.services[key]
-                logger.info(f"Unexposed service: {node}:{port} ({protocol})")
+                self.logger.info(f"Unexposed service: {node}:{port} ({protocol})")
                 return True
             return False
 
@@ -223,7 +228,7 @@ class NetworkSimulator:
             # Service must exist
             service_key = (dst_node, port)
             if service_key not in self.services:
-                logger.debug(
+                self.logger.debug(
                     f"Reachability denied: {src_network} -> {dst_node}:{port} "
                     f"(service not exposed)"
                 )
@@ -231,7 +236,7 @@ class NetworkSimulator:
 
             # Protocol must match
             if self.services[service_key] != protocol:
-                logger.debug(
+                self.logger.debug(
                     f"Reachability denied: {src_network} -> {dst_node}:{port} "
                     f"(protocol mismatch: requested {protocol}, "
                     f"service is {self.services[service_key]})"
@@ -242,7 +247,7 @@ class NetworkSimulator:
             dst_networks = self.device_networks.get(dst_node, set())
 
             if not dst_networks:
-                logger.warning(
+                self.logger.warning(
                     f"Destination device {dst_node} not on any network, denying access"
                 )
                 return False
@@ -250,14 +255,20 @@ class NetworkSimulator:
             allowed = src_network in dst_networks
 
             if allowed:
-                logger.debug(
+                self.logger.debug(
                     f"Reachability allowed: {src_network} -> {dst_node}:{port} ({protocol})"
                 )
             else:
-                logger.info(
-                    f"Reachability denied: {src_network} -> {dst_node}:{port} "
-                    f"(network segmentation: source on {src_network}, "
-                    f"destination on {dst_networks})"
+                await self.logger.log_security(
+                    f"Network segmentation denied: {src_network} -> {dst_node}:{port}",
+                    severity=EventSeverity.NOTICE,
+                    data={
+                        "source_network": src_network,
+                        "destination_node": dst_node,
+                        "destination_networks": list(dst_networks),
+                        "port": port,
+                        "protocol": protocol,
+                    },
                 )
 
             return allowed
@@ -283,10 +294,12 @@ class NetworkSimulator:
         Returns:
             True if connection is allowed from any source network, False otherwise
         """
-        src_networks = self.device_networks.get(src_node, set())
+        # Get a copy of source networks while holding the lock
+        async with self._lock:
+            src_networks = self.device_networks.get(src_node, set()).copy()
 
         if not src_networks:
-            logger.debug(
+            self.logger.debug(
                 f"Source device {src_node} not on any network, cannot reach {dst_node}"
             )
             return False
@@ -374,7 +387,6 @@ class NetworkSimulator:
                 },
                 "devices": {
                     "count": len(self.device_networks),
-                    "networked": len(self.device_networks),
                 },
                 "services": {
                     "count": len(self.services),
@@ -387,10 +399,7 @@ class NetworkSimulator:
 
         Note: Should only be called while holding self._lock
         """
-        counts: dict[str, int] = {}
-        for protocol in self.services.values():
-            counts[protocol] = counts.get(protocol, 0) + 1
-        return counts
+        return dict(Counter(self.services.values()))
 
     # ----------------------------------------------------------------
     # Lifecycle
@@ -406,4 +415,4 @@ class NetworkSimulator:
             self.device_networks.clear()
             self.services.clear()
             self._loaded = False
-            logger.info("Network simulator reset")
+            self.logger.info("Network simulator reset")

@@ -13,14 +13,17 @@ Responsibilities:
 """
 
 import asyncio
-import logging
 from collections.abc import Callable
 from typing import Any, Protocol
 
 from components.network.network_simulator import NetworkSimulator
+from components.security.logging_system import (
+    EventSeverity,
+    ICSLogger,
+    get_logger,
+)
 
-# Configure logging
-logger = logging.getLogger(__name__)
+__all__ = ["ProtocolHandler", "ProtocolSimulator"]
 
 
 class ProtocolHandler(Protocol):
@@ -67,6 +70,7 @@ class ProtocolSimulator:
         """
         self.network = network
         self.listeners: list[_Listener] = []
+        self.logger: ICSLogger = get_logger(__name__, device="protocol_simulator")
 
     # ----------------------------------------------------------------
     # Listener registration
@@ -119,7 +123,7 @@ class ProtocolSimulator:
 
         self.listeners.append(listener)
 
-        logger.info(
+        self.logger.info(
             f"Registered protocol listener: {node}:{port} ({protocol}) on {network}"
         )
 
@@ -133,10 +137,10 @@ class ProtocolSimulator:
         Starts TCP servers for all registered protocols.
         """
         if not self.listeners:
-            logger.warning("No protocol listeners registered")
+            self.logger.warning("No protocol listeners registered")
             return
 
-        logger.info(f"Starting {len(self.listeners)} protocol listener(s)")
+        self.logger.info(f"Starting {len(self.listeners)} protocol listener(s)")
 
         results = await asyncio.gather(
             *(listener.start() for listener in self.listeners), return_exceptions=True
@@ -145,15 +149,15 @@ class ProtocolSimulator:
         # Check for failures
         failed = sum(1 for r in results if isinstance(r, Exception))
         if failed:
-            logger.error(f"Failed to start {failed} listener(s)")
+            self.logger.error(f"Failed to start {failed} listener(s)")
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
                     listener = self.listeners[i]
-                    logger.error(
+                    self.logger.error(
                         f"Listener {listener.node}:{listener.port} failed: {result}"
                     )
         else:
-            logger.info(f"All {len(self.listeners)} listener(s) started successfully")
+            self.logger.info(f"All {len(self.listeners)} listener(s) started successfully")
 
     async def stop(self) -> None:
         """Stop all protocol listeners.
@@ -163,19 +167,19 @@ class ProtocolSimulator:
         if not self.listeners:
             return
 
-        logger.info(f"Stopping {len(self.listeners)} protocol listener(s)")
+        self.logger.info(f"Stopping {len(self.listeners)} protocol listener(s)")
 
         await asyncio.gather(
             *(listener.stop() for listener in self.listeners), return_exceptions=True
         )
 
-        logger.info("All protocol listeners stopped")
+        self.logger.info("All protocol listeners stopped")
 
     # ----------------------------------------------------------------
     # Status
     # ----------------------------------------------------------------
 
-    async def get_summary(self) -> dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """Get protocol listener summary.
 
         Returns:
@@ -229,6 +233,9 @@ class _Listener:
         self.active_connections = 0
         self.total_connections = 0
         self.denied_connections = 0
+        self.logger: ICSLogger = get_logger(
+            f"{__name__}.{node}", device=node
+        )
 
     # ----------------------------------------------------------------
     # Lifecycle
@@ -242,7 +249,7 @@ class _Listener:
             port=self.port,
         )
 
-        logger.info(f"Listener started: {self.node}:{self.port} ({self.protocol})")
+        self.logger.info(f"Listener started: {self.node}:{self.port} ({self.protocol})")
 
     async def stop(self) -> None:
         """Stop TCP listener and close active connections."""
@@ -250,7 +257,7 @@ class _Listener:
             self.server.close()
             await self.server.wait_closed()
 
-            logger.info(
+            self.logger.info(
                 f"Listener stopped: {self.node}:{self.port} "
                 f"(handled {self.total_connections} connections, "
                 f"denied {self.denied_connections})"
@@ -283,7 +290,7 @@ class _Listener:
         # unless coming from localhost (which might be another simulated device)
         src_network = self._determine_source_network(peername[0] if peername else None)
 
-        logger.debug(
+        self.logger.debug(
             f"Connection attempt: {client_addr} ({src_network}) -> "
             f"{self.node}:{self.port} ({self.protocol})"
         )
@@ -298,16 +305,23 @@ class _Listener:
 
         if not allowed:
             self.denied_connections += 1
-            logger.warning(
-                f"Connection denied: {client_addr} ({src_network}) -> "
-                f"{self.node}:{self.port} (network segmentation)"
+            await self.logger.log_security(
+                f"Connection denied by network segmentation: {client_addr} "
+                f"({src_network}) -> {self.node}:{self.port}",
+                severity=EventSeverity.WARNING,
+                data={
+                    "source_network": src_network,
+                    "client_address": client_addr,
+                    "target_port": self.port,
+                    "protocol": self.protocol,
+                },
             )
             writer.close()
             await writer.wait_closed()
             return
 
         # Connection allowed - delegate to protocol handler
-        logger.info(
+        self.logger.info(
             f"Connection accepted: {client_addr} ({src_network}) -> "
             f"{self.node}:{self.port} ({self.protocol})"
         )
@@ -318,15 +332,16 @@ class _Listener:
             handler = self.handler_factory()
             await handler.serve(reader, writer)
         except Exception as e:
-            logger.error(
+            self.logger.error(
                 f"Handler error for {client_addr} -> {self.node}:{self.port}: {e}",
                 exc_info=True,
             )
         finally:
             self.active_connections -= 1
-            logger.debug(f"Connection closed: {client_addr} -> {self.node}:{self.port}")
+            self.logger.debug(f"Connection closed: {client_addr} -> {self.node}:{self.port}")
 
-    def _determine_source_network(self, client_ip: str | None) -> str:
+    @staticmethod
+    def _determine_source_network(client_ip: str | None) -> str:
         """Determine source network from client IP.
 
         In a real implementation, this would map IP addresses to networks.

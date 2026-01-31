@@ -7,11 +7,11 @@ Useful for testing protocol interactions and network segmentation bypass.
 """
 
 import asyncio
-import logging
 from typing import Any
 
-# Configure logging
-logger = logging.getLogger(__name__)
+from components.security.logging_system import ICSLogger, get_logger
+
+__all__ = ["TCPProxy"]
 
 
 class TCPProxy:
@@ -78,7 +78,10 @@ class TCPProxy:
         self.active_connections = 0
         self.total_connections = 0
         self.bytes_proxied = 0
-        self._connection_tasks: set[asyncio.Task] = set()
+        self._connection_tasks: set[asyncio.Task[None]] = set()
+        self.logger: ICSLogger = get_logger(
+            __name__, device=f"proxy_{listen_port}_{target_port}"
+        )
 
     # ----------------------------------------------------------------
     # Lifecycle
@@ -97,13 +100,13 @@ class TCPProxy:
                 self.listen_port,
             )
 
-            logger.info(
+            self.logger.info(
                 f"TCP Proxy started: {self.listen_host}:{self.listen_port} -> "
                 f"{self.target_host}:{self.target_port}"
             )
 
         except OSError as e:
-            logger.error(
+            self.logger.error(
                 f"Failed to start TCP proxy on {self.listen_host}:{self.listen_port}: {e}"
             )
             raise
@@ -116,23 +119,29 @@ class TCPProxy:
         if not self.server:
             return
 
-        logger.info(
+        self.logger.info(
             f"Stopping TCP proxy {self.listen_host}:{self.listen_port} "
             f"({self.active_connections} active connections)"
         )
 
         # Stop accepting new connections
         self.server.close()
+
+        # Cancel active connection tasks BEFORE wait_closed()
+        # (wait_closed waits for handlers to finish, which won't happen
+        # if they're blocked waiting for data)
+        if self._connection_tasks:
+            tasks = list(self._connection_tasks)
+            self.logger.debug(f"Cancelling {len(tasks)} active connection tasks")
+            for task in tasks:
+                task.cancel()
+            # Wait briefly for cancellation to propagate
+            await asyncio.gather(*tasks, return_exceptions=True)
+            self._connection_tasks.clear()
+
         await self.server.wait_closed()
 
-        # Wait for active connections to complete
-        if self._connection_tasks:
-            logger.debug(
-                f"Waiting for {len(self._connection_tasks)} connections to close"
-            )
-            await asyncio.gather(*self._connection_tasks, return_exceptions=True)
-
-        logger.info(
+        self.logger.info(
             f"TCP Proxy stopped: proxied {self.total_connections} connections, "
             f"{self.bytes_proxied} bytes total"
         )
@@ -161,28 +170,43 @@ class TCPProxy:
         peername = client_writer.get_extra_info("peername")
         client_addr = f"{peername[0]}:{peername[1]}" if peername else "unknown"
 
-        logger.info(
+        # Log proxy usage for security audit
+        await self.logger.log_audit(
+            f"Proxy connection initiated: {client_addr} -> "
+            f"{self.target_host}:{self.target_port}",
+            action="proxy_connect",
+            result="INITIATED",
+            data={
+                "client_address": client_addr,
+                "target": f"{self.target_host}:{self.target_port}",
+            },
+        )
+
+        self.logger.info(
             f"Proxy connection: {client_addr} -> "
             f"{self.target_host}:{self.target_port}"
         )
 
         target_writer: asyncio.StreamWriter | None = None
+        client_to_target: asyncio.Task[None] | None = None
+        target_to_client: asyncio.Task[None] | None = None
 
         try:
             # Connect to target with timeout
-            target_reader, target_writer = await asyncio.wait_for(  # noqa: F841
+            target_reader, target_writer = await asyncio.wait_for(
                 asyncio.open_connection(self.target_host, self.target_port),
                 timeout=self.timeout,
             )
 
             # Verify both connections established
-            assert target_reader is not None and target_writer is not None
+            if target_reader is None or target_writer is None:
+                raise ConnectionError("Failed to establish target connection")
 
-            logger.debug(
+            self.logger.debug(
                 f"Proxy established: {client_addr} <-> {self.target_host}:{self.target_port}"
             )
 
-            # Create bidirectional proxy tasks (target_reader used here)
+            # Create bidirectional proxy tasks
             client_to_target = asyncio.create_task(
                 self._pipe(client_reader, target_writer, f"{client_addr} -> target")
             )
@@ -194,20 +218,35 @@ class TCPProxy:
             self._connection_tasks.add(client_to_target)
             self._connection_tasks.add(target_to_client)
 
-            # Wait for both directions to complete
-            await asyncio.gather(
-                client_to_target, target_to_client, return_exceptions=True
+            # Wait for either direction to complete (EOF), then cancel the other
+            done, pending = await asyncio.wait(
+                [client_to_target, target_to_client],
+                return_when=asyncio.FIRST_COMPLETED,
             )
 
+            # Cancel pending tasks (the other direction)
+            for task in pending:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+
         except TimeoutError:
-            logger.warning(
+            self.logger.warning(
                 f"Proxy timeout: {client_addr} -> {self.target_host}:{self.target_port}"
             )
         except ConnectionRefusedError:
-            logger.error(f"Proxy target refused: {self.target_host}:{self.target_port}")
+            self.logger.error(f"Proxy target refused: {self.target_host}:{self.target_port}")
         except Exception as e:
-            logger.error(f"Proxy error for {client_addr}: {e}", exc_info=True)
+            self.logger.error(f"Proxy error for {client_addr}: {e}", exc_info=True)
         finally:
+            # Remove completed tasks from tracking set
+            if client_to_target is not None:
+                self._connection_tasks.discard(client_to_target)
+            if target_to_client is not None:
+                self._connection_tasks.discard(target_to_client)
+
             # Clean up target connection if established
             if target_writer:
                 try:
@@ -217,12 +256,15 @@ class TCPProxy:
                     pass
 
             # Clean up client connection
-            client_writer.close()
-            await client_writer.wait_closed()
+            try:
+                client_writer.close()
+                await client_writer.wait_closed()
+            except Exception:
+                pass
 
             self.active_connections -= 1
 
-            logger.debug(f"Proxy connection closed: {client_addr}")
+            self.logger.debug(f"Proxy connection closed: {client_addr}")
 
     # ----------------------------------------------------------------
     # Data piping
@@ -236,6 +278,8 @@ class TCPProxy:
     ) -> None:
         """Pipe data from reader to writer.
 
+        Note: Caller is responsible for closing the writer.
+
         Args:
             reader: Source stream reader
             writer: Destination stream writer
@@ -247,7 +291,7 @@ class TCPProxy:
 
                 if not data:
                     # EOF reached
-                    logger.debug(f"EOF on {direction}")
+                    self.logger.debug(f"EOF on {direction}")
                     break
 
                 self.bytes_proxied += len(data)
@@ -255,25 +299,19 @@ class TCPProxy:
                 writer.write(data)
                 await writer.drain()
 
-                logger.debug(f"Proxied {len(data)} bytes: {direction}")
+                self.logger.debug(f"Proxied {len(data)} bytes: {direction}")
 
         except asyncio.CancelledError:
-            logger.debug(f"Pipe cancelled: {direction}")
+            self.logger.debug(f"Pipe cancelled: {direction}")
             raise
         except Exception as e:
-            logger.error(f"Pipe error on {direction}: {e}")
-        finally:
-            try:
-                writer.close()
-                await writer.wait_closed()
-            except Exception:
-                pass
+            self.logger.error(f"Pipe error on {direction}: {e}")
 
     # ----------------------------------------------------------------
     # Status
     # ----------------------------------------------------------------
 
-    async def get_summary(self) -> dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """Get proxy statistics.
 
         Returns:
@@ -285,5 +323,5 @@ class TCPProxy:
             "active_connections": self.active_connections,
             "total_connections": self.total_connections,
             "bytes_proxied": self.bytes_proxied,
-            "running": self.server is not None,
+            "running": self.server is not None and self.server.is_serving(),
         }
