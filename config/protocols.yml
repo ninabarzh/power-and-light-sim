@@ -1,57 +1,219 @@
 # config/protocols.yml
-# Protocol-specific global settings
+# UU Power & Light Co. - Protocol Configuration
+#
+# Industrial protocols used across the UU P&L infrastructure:
+# - Modbus TCP/RTU: Universal protocol for PLCs and RTUs
+# - DNP3: Substation and distribution automation
+# - EtherNet/IP: Allen-Bradley ControlLogix (Hex Turbine)
+# - S7: Siemens S7-400 (Alchemical Reactor)
+# - OPC UA: SCADA and historian integration
 
 protocols:
   modbus:
+    description: Modbus TCP/RTU - Universal industrial protocol
     default_timeout: 3.0
     default_retries: 3
     unit_id_range: [1, 247]
+    # Used by: All PLCs, RTUs, SCADA servers
+    devices:
+      - hex_turbine_plc
+      - hex_turbine_safety_plc
+      - reactor_plc
+      - library_hvac_plc
+      - library_lspace_monitor
+      - substation_rtu_1
+      - scada_server_primary
 
-  iec104:
-    default_t1: 15
-    default_t2: 10
-    default_t3: 20
-    default_k: 12
-    default_w: 8
+  dnp3:
+    description: DNP3 - Distribution Network Protocol
+    default_timeout: 5.0
+    default_retries: 3
+    # Timing parameters
+    default_application_layer_timeout: 5.0
+    default_link_layer_timeout: 2.0
+    # Unsolicited response settings
+    unsolicited_retry_delay: 10.0
+    unsolicited_max_retries: 3
+    # Event buffer sizes
+    binary_input_events: 100
+    analog_input_events: 100
+    counter_events: 50
+    # Used by: Substation RTUs for distribution SCADA
+    devices:
+      - substation_rtu_1
+      - substation_rtu_2
+      - substation_rtu_3
+
+  ethernet_ip:
+    description: EtherNet/IP - Allen-Bradley ControlLogix
+    default_timeout: 5.0
+    default_retries: 2
+    default_port: 44818
+    # CIP connection parameters
+    cip_connection_timeout: 10.0
+    rpi_ms: 100  # Requested packet interval
+    # Used by: Hex Steam Turbine (Allen-Bradley ControlLogix 1998)
+    devices:
+      - hex_turbine_plc
 
   s7:
+    description: Siemens S7 Protocol
     default_rack: 0
-    default_slot: 1
+    default_slot: 2  # Slot 2 for S7-400 CPUs
     pdu_size: 480
+    default_timeout: 3.0
+    # Used by: Alchemical Reactor (Siemens S7-400 2003)
+    devices:
+      - reactor_plc
+      - reactor_safety_plc
 
   opcua:
-    default_security_mode: None
+    description: OPC UA - SCADA and historian integration
+    default_security_mode: None  # Legacy system - security disabled
     default_security_policy: None
-    session_timeout: 3600000
+    session_timeout: 3600000  # 1 hour
+    # Subscription settings
+    default_publishing_interval: 1000  # 1 second
+    default_lifetime_count: 10
+    default_max_keep_alive_count: 3
+    # Used by: SCADA servers, historians
+    devices:
+      - scada_server_primary
+      - scada_server_backup
+      - historian_primary
 
+  serial:
+    description: Serial RS-232/RS-485
+    default_baud: 9600
+    default_data_bits: 8
+    default_stop_bits: 1
+    default_parity: none
+    default_timeout: 2.0
+    # Used by: Legacy systems
+    devices:
+      - legacy_data_collector
+
+# ================================================================
+# PROTOCOL ADAPTERS
+# Library implementations for each protocol
+# ================================================================
 adapters:
-  pymodbus_3114:
+  pymodbus_adapter:
     library: pymodbus
-    version: 3.11.4
+    version: ">=3.6.0"
+    protocol: modbus
     features:
       - tcp_server
+      - tcp_client
+      - rtu_server
+      - rtu_client
       - simulator
       - async_support
 
-  c104_221:
-    library: c104
-    version: 2.2.1
+  dnp3_adapter:
+    library: pydnp3
+    version: ">=0.1.0"
+    protocol: dnp3
     features:
-      - server
-      - client
-      - async_support
+      - outstation
+      - master
+      - unsolicited_responses
+      - event_buffering
+    notes: "Alternative: opendnp3 Python bindings"
 
-  snap7_202:
+  ethernet_ip_adapter:
+    library: pycomm3
+    version: ">=1.10.0"
+    protocol: ethernet_ip
+    features:
+      - logix_driver
+      - read_tag
+      - write_tag
+      - get_plc_info
+    notes: "Allen-Bradley ControlLogix/CompactLogix support"
+
+  snap7_adapter:
     library: snap7
-    version: 2.0.2
+    version: ">=2.0.0"
+    protocol: s7
     features:
       - server
       - client
+      - partner
+    notes: "Siemens S7 protocol support"
 
-  opcua_asyncua_118:
+  opcua_adapter:
     library: asyncua
-    version: 1.1.8
+    version: ">=1.0.0"
+    protocol: opcua
     features:
       - server
       - client
+      - subscriptions
+      - history
       - async_support
+
+  serial_adapter:
+    library: pyserial
+    version: ">=3.5"
+    protocol: serial
+    features:
+      - rs232
+      - rs485
+      - virtual_ports
+
+# ================================================================
+# PROTOCOL VULNERABILITIES
+# Known security issues for training scenarios
+# ================================================================
+vulnerabilities:
+  modbus:
+    - name: no_authentication
+      description: Modbus has no built-in authentication
+      cve: null
+      severity: high
+    - name: replay_attacks
+      description: Commands can be captured and replayed
+      cve: null
+      severity: high
+    - name: function_code_scanning
+      description: Attackers can probe for supported functions
+      cve: null
+      severity: medium
+
+  dnp3:
+    - name: cleartext_credentials
+      description: DNP3 Secure Authentication may use weak keys
+      cve: null
+      severity: high
+    - name: broadcast_storms
+      description: Unsolicited responses can be triggered maliciously
+      cve: null
+      severity: medium
+
+  s7:
+    - name: no_authentication
+      description: S7comm has no authentication
+      cve: null
+      severity: critical
+    - name: stop_cpu
+      description: Unauthenticated CPU stop command
+      cve: null
+      severity: critical
+
+  ethernet_ip:
+    - name: cip_safety_bypass
+      description: CIP Safety can be disabled remotely
+      cve: null
+      severity: critical
+    - name: firmware_upload
+      description: Firmware can be uploaded without authentication
+      cve: null
+      severity: high
+
+  opcua:
+    - name: security_none
+      description: Security mode None allows eavesdropping
+      cve: null
+      severity: high
+      notes: "UU P&L uses None for 'compatibility' - common in legacy deployments"

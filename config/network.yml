@@ -1,29 +1,282 @@
 # config/network.yml
-# Network topology and connections
+# UU Power & Light Co. - Network Topology Configuration
+#
+# Based on Purdue Model for ICS network segmentation:
+# - Level 0-1: Control Zone (PLCs, RTUs, field devices)
+# - Level 2: Supervisory Zone (HMI, engineering workstations)
+# - Level 3: Operations Zone (SCADA servers)
+# - Level 3.5: DMZ (data diodes, jump servers)
+# - Level 4: Enterprise Zone (historians, business systems)
 
-networks:
-  - name: plant_network
-    subnet: 192.168.1.0/24
-    vlan: 10
-    description: Main plant control network
+zones:
+  # ================================================================
+  # CONTROL ZONE - Purdue Level 0-2
+  # Direct process control - PLCs, RTUs, safety systems
+  # ================================================================
+  - name: control_zone
+    description: Process control network - PLCs, RTUs, and field devices
+    security_level: critical
+    networks:
+      - name: turbine_network
+        subnet: 10.10.1.0/24
+        vlan: 101
+        description: Hex Steam Turbine control network
 
-  - name: scada_network
-    subnet: 192.168.2.0/24
-    vlan: 20
-    description: SCADA supervisory network
+      - name: reactor_network
+        subnet: 10.10.2.0/24
+        vlan: 102
+        description: Alchemical Reactor control network
+        isolated: true  # Air-gapped from other control networks
 
-  - name: corporate_network
-    subnet: 10.0.0.0/16
-    vlan: 100
-    description: Corporate IT network
+      - name: library_network
+        subnet: 10.10.3.0/24
+        vlan: 103
+        description: Library Environmental control network
 
+      - name: distribution_network
+        subnet: 10.10.10.0/24
+        vlan: 110
+        description: City-wide distribution RTU network (DNP3)
+
+  # ================================================================
+  # OPERATIONS ZONE - Purdue Level 3
+  # SCADA servers, HMI workstations, engineering stations
+  # ================================================================
+  - name: operations_zone
+    description: SCADA and operator interface network
+    security_level: high
+    networks:
+      - name: scada_network
+        subnet: 10.20.1.0/24
+        vlan: 201
+        description: Primary SCADA server network
+
+      - name: hmi_network
+        subnet: 10.20.2.0/24
+        vlan: 202
+        description: Operator HMI workstations
+
+      - name: engineering_network
+        subnet: 10.20.3.0/24
+        vlan: 203
+        description: Engineering and programming workstations
+
+  # ================================================================
+  # DMZ - Purdue Level 3.5
+  # Data diodes, jump servers, protocol converters
+  # ================================================================
+  - name: dmz
+    description: Demilitarised zone between OT and IT
+    security_level: high
+    networks:
+      - name: dmz_network
+        subnet: 10.30.1.0/24
+        vlan: 301
+        description: DMZ for OT/IT data transfer
+
+  # ================================================================
+  # ENTERPRISE ZONE - Purdue Level 4
+  # Historians, business systems, data analytics
+  # ================================================================
+  - name: enterprise_zone
+    description: Enterprise IT and historian network
+    security_level: medium
+    networks:
+      - name: historian_network
+        subnet: 10.40.1.0/24
+        vlan: 401
+        description: Historian and data archival
+
+      - name: legacy_network
+        subnet: 10.40.99.0/24
+        vlan: 499
+        description: Legacy systems (isolated)
+        notes: "Windows 98 data collector - DO NOT CONNECT TO INTERNET"
+
+# ================================================================
+# DEVICE ASSIGNMENTS
+# Which devices connect to which networks
+# ================================================================
 connections:
-  # Define which devices are on which networks
-  plant_network:
-    - turbine_plc_1
-    - substation_plc_1
+  # Turbine Control Network
+  turbine_network:
+    - device: hex_turbine_plc
+      ip: 10.10.1.10
+      description: Main turbine controller
+    - device: hex_turbine_safety_plc
+      ip: 10.10.1.11
+      description: Safety instrumented system
 
+  # Reactor Control Network (isolated)
+  reactor_network:
+    - device: reactor_plc
+      ip: 10.10.2.10
+      description: Alchemical reactor controller
+    - device: reactor_safety_plc
+      ip: 10.10.2.11
+      description: Independent safety PLC
+
+  # Library Environmental Network
+  library_network:
+    - device: library_hvac_plc
+      ip: 10.10.3.10
+      description: HVAC controller
+    - device: library_lspace_monitor
+      ip: 10.10.3.20
+      description: L-space stability monitor
+
+  # Distribution RTU Network
+  distribution_network:
+    - device: substation_rtu_1
+      ip: 10.10.10.100
+      description: Campus substation RTU
+    - device: substation_rtu_2
+      ip: 10.10.10.101
+      description: Ankh district RTU
+    - device: substation_rtu_3
+      ip: 10.10.10.102
+      description: Morpork district RTU
+
+  # SCADA Server Network
   scada_network:
-    - scada_server_1
-    - substation_plc_1  # Substation bridges both networks
+    - device: scada_server_primary
+      ip: 10.20.1.10
+      description: Primary SCADA server
+    - device: scada_server_backup
+      ip: 10.20.1.11
+      description: Backup SCADA server
 
+  # HMI Operator Network
+  hmi_network:
+    - device: hmi_operator_1
+      ip: 10.20.2.10
+      description: Operator workstation 1
+    - device: hmi_operator_2
+      ip: 10.20.2.11
+      description: Operator workstation 2
+    - device: hmi_operator_3
+      ip: 10.20.2.12
+      description: Operator workstation 3
+    - device: hmi_operator_4
+      ip: 10.20.2.13
+      description: Operator workstation 4
+
+  # Engineering Network
+  engineering_network:
+    - device: engineering_workstation
+      ip: 10.20.3.10
+      description: PLC programming workstation
+
+  # Historian Network
+  historian_network:
+    - device: historian_primary
+      ip: 10.40.1.10
+      description: Primary data historian
+
+  # Legacy Network (isolated)
+  legacy_network:
+    - device: legacy_data_collector
+      ip: 10.40.99.10
+      description: Windows 98 turbine data collector
+      notes: "Serial connection only - no IP routing"
+
+# ================================================================
+# INTER-ZONE CONNECTIONS
+# Defines allowed traffic paths between zones
+# ================================================================
+inter_zone_routing:
+  # Control Zone to Operations Zone
+  - from_zone: control_zone
+    to_zone: operations_zone
+    description: Process data to SCADA
+    allowed_protocols:
+      - modbus_tcp
+      - dnp3
+      - ethernet_ip
+      - s7
+      - opcua
+    direction: bidirectional
+    firewall_rules:
+      - allow: modbus_tcp
+        ports: [10502, 10503, 10504, 10505, 10506, 10510]
+      - allow: dnp3
+        ports: [20000, 20001, 20002]
+      - allow: ethernet_ip
+        ports: [44818]
+      - allow: s7
+        ports: [102, 103]
+
+  # Operations Zone to DMZ
+  - from_zone: operations_zone
+    to_zone: dmz
+    description: Data export to enterprise
+    allowed_protocols:
+      - opcua
+    direction: outbound_only
+    firewall_rules:
+      - allow: opcua
+        ports: [4840, 4841]
+
+  # DMZ to Enterprise Zone
+  - from_zone: dmz
+    to_zone: enterprise_zone
+    description: Historical data transfer
+    allowed_protocols:
+      - opcua
+      - https
+    direction: outbound_only
+    firewall_rules:
+      - allow: opcua
+        ports: [4850]
+      - allow: https
+        ports: [443]
+
+# ================================================================
+# PHYSICAL TOPOLOGY
+# Cable runs and network infrastructure
+# ================================================================
+physical_topology:
+  switches:
+    - name: sw_turbine
+      location: Turbine Hall - Basement Level 3
+      ports: 24
+      networks: [turbine_network]
+
+    - name: sw_reactor
+      location: Reactor Building - Sub-basement
+      ports: 24
+      networks: [reactor_network]
+      notes: "Isolated - no uplink to core"
+
+    - name: sw_library
+      location: Library - Mechanical Room L-7
+      ports: 24
+      networks: [library_network]
+
+    - name: sw_distribution
+      location: Main Substation
+      ports: 48
+      networks: [distribution_network]
+      notes: "Connects to remote substations via fibre"
+
+    - name: sw_ops_core
+      location: Control Room - Main Building
+      ports: 48
+      networks: [scada_network, hmi_network, engineering_network]
+
+    - name: sw_enterprise
+      location: Server Room
+      ports: 24
+      networks: [historian_network, dmz_network]
+
+  firewalls:
+    - name: fw_ot_perimeter
+      location: Control Room - Network Cabinet
+      description: OT/IT boundary firewall
+      interfaces:
+        - name: control_zone
+          networks: [turbine_network, library_network, distribution_network]
+        - name: operations_zone
+          networks: [scada_network, hmi_network, engineering_network]
+        - name: dmz
+          networks: [dmz_network]

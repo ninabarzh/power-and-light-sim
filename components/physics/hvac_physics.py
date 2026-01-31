@@ -754,3 +754,95 @@ class HVACPhysics:
             f"{self.device_name}: Outside conditions updated - "
             f"T={temperature_c}°C, RH={humidity_percent}%"
         )
+
+    # ----------------------------------------------------------------
+    # Control interface (for PLC integration)
+    # ----------------------------------------------------------------
+
+    def set_temperature_setpoint(self, temp_c: float) -> None:
+        """Set zone temperature setpoint.
+
+        Args:
+            temp_c: Target temperature in Celsius
+        """
+        self._control_cache["temperature_setpoint_c"] = temp_c
+        logger.debug(f"{self.device_name}: Temperature setpoint set to {temp_c}°C")
+
+    def set_humidity_setpoint(self, percent: float) -> None:
+        """Set zone humidity setpoint.
+
+        Args:
+            percent: Target relative humidity (%)
+        """
+        self._control_cache["humidity_setpoint_percent"] = max(0.0, min(100.0, percent))
+        logger.debug(f"{self.device_name}: Humidity setpoint set to {percent}%")
+
+    def set_fan_speed(self, percent: float) -> None:
+        """Set supply fan speed.
+
+        Args:
+            percent: Fan speed (0-100%)
+        """
+        self._control_cache["fan_speed_command"] = max(0.0, min(100.0, percent))
+        logger.debug(f"{self.device_name}: Fan speed set to {percent}%")
+
+    def set_damper_position(self, percent: float) -> None:
+        """Set outside air damper position.
+
+        Args:
+            percent: Damper position (0=closed, 100=open)
+        """
+        self._control_cache["damper_command"] = max(0.0, min(100.0, percent))
+        logger.debug(f"{self.device_name}: Damper set to {percent}%")
+
+    def set_operating_mode(self, mode: int) -> None:
+        """Set HVAC operating mode.
+
+        Args:
+            mode: 0=off, 1=heat, 2=cool, 3=auto
+        """
+        if mode not in (self.MODE_OFF, self.MODE_HEAT, self.MODE_COOL, self.MODE_AUTO):
+            logger.warning(f"{self.device_name}: Invalid mode {mode}, using OFF")
+            mode = self.MODE_OFF
+        self._control_cache["mode_select"] = mode
+        mode_names = {0: "OFF", 1: "HEAT", 2: "COOL", 3: "AUTO"}
+        logger.debug(f"{self.device_name}: Mode set to {mode_names.get(mode, 'UNKNOWN')}")
+
+    def set_system_enable(self, enabled: bool) -> None:
+        """Enable or disable HVAC system.
+
+        Args:
+            enabled: True to enable system
+        """
+        self._control_cache["system_enable"] = bool(enabled)
+        logger.debug(
+            f"{self.device_name}: System {'enabled' if enabled else 'disabled'}"
+        )
+
+    def set_lspace_dampener(self, enabled: bool) -> None:
+        """Enable or disable L-space dampener.
+
+        Args:
+            enabled: True to enable dampener
+        """
+        self._control_cache["lspace_dampener_enable"] = bool(enabled)
+        logger.debug(
+            f"{self.device_name}: L-space dampener "
+            f"{'enabled' if enabled else 'disabled'}"
+        )
+
+    def get_temperature_setpoint(self) -> float:
+        """Get current temperature setpoint."""
+        return self._control_cache.get("temperature_setpoint_c", 20.0)
+
+    def get_humidity_setpoint(self) -> float:
+        """Get current humidity setpoint."""
+        return self._control_cache.get("humidity_setpoint_percent", 45.0)
+
+    def get_operating_mode(self) -> int:
+        """Get current operating mode."""
+        return self._control_cache.get("mode_select", self.MODE_OFF)
+
+    def is_system_enabled(self) -> bool:
+        """Check if system is enabled."""
+        return self._control_cache.get("system_enable", False)

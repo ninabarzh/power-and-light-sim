@@ -1,55 +1,251 @@
 # config/devices.yml
-# Define all devices in the simulation
+# UU Power & Light Co. - Device Configuration
+#
+# This defines all devices in the simulation based on the UU P&L infrastructure:
+# - Hex Steam Turbine (Allen-Bradley ControlLogix, 1998)
+# - Alchemical Reactor (Siemens S7-400, 2003)
+# - Library Environmental (Schneider Modicon, 1987 + Modbus gateway)
+# - City-Wide Distribution (RTUs via DNP3, Wonderware HMI)
 
 devices:
-  # Steam turbine PLCs
-  - name: turbine_plc_1
+  # ================================================================
+  # HEX STEAM TURBINE CONTROL SYSTEM
+  # Main power generation - hardwired logic and polling loops
+  # ================================================================
+  - name: hex_turbine_plc
     type: turbine_plc
     device_id: 1
-    description: Main steam turbine PLC
-    location: Turbine Hall A
+    description: Hex Steam Turbine Controller (Allen-Bradley ControlLogix 1998)
+    location: Turbine Hall - Basement Level 3
+    zone: control_zone
     protocols:
       modbus:
-        adapter: pymodbus_3114
-        host: localhost
-        port: 15020
-        device_id: 1
-        simulator: true
+        host: 0.0.0.0
+        port: 10502
+        unit_id: 1
+      ethernet_ip:
+        host: 0.0.0.0
+        port: 44818
+        slot: 0
+    physics_engine: turbine_physics
+    scan_interval: 0.1  # 100ms scan cycle
 
-  # Substation equipment
-  - name: substation_plc_1
-    type: substation_plc
+  - name: hex_turbine_safety_plc
+    type: safety_plc
     device_id: 2
-    description: Main substation PLC
-    location: Substation 1
+    description: Turbine Safety Instrumented System
+    location: Turbine Hall - Basement Level 3
+    zone: control_zone
     protocols:
       modbus:
-        adapter: pymodbus_3114
-        host: localhost
-        port: 15021
-        device_id: 2
-        simulator: true
-      iec104:
-        adapter: c104_221
-        bind_host: 0.0.0.0
-        bind_port: 2404
-        common_address: 1
-        simulator: true
+        host: 0.0.0.0
+        port: 10503
+        unit_id: 2
+    scan_interval: 0.05  # 50ms for safety-critical
 
-  # SCADA servers
-  - name: scada_server_1
-    type: scada_server
-    device_id: 3
-    description: SCADA master station
-    location: Control Room
+  # ================================================================
+  # ALCHEMICAL REACTOR CONTROL SYSTEM
+  # Bursar's Automated Alchemical Reactor Controls
+  # ================================================================
+  - name: reactor_plc
+    type: reactor_plc
+    device_id: 10
+    description: Alchemical Reactor Controller (Siemens S7-400 2003)
+    location: Reactor Building - Sub-basement
+    zone: control_zone
+    protocols:
+      s7:
+        host: 0.0.0.0
+        port: 102
+        rack: 0
+        slot: 2
+      modbus:
+        host: 0.0.0.0
+        port: 10504
+        unit_id: 10
+    physics_engine: reactor_physics
+    scan_interval: 0.1
+
+  - name: reactor_safety_plc
+    type: safety_plc
+    device_id: 11
+    description: Reactor Safety PLC (Independent SIL-rated)
+    location: Reactor Building - Sub-basement
+    zone: control_zone
+    protocols:
+      s7:
+        host: 0.0.0.0
+        port: 103
+        rack: 0
+        slot: 3
+    scan_interval: 0.025  # 25ms for reactor safety
+
+  # ================================================================
+  # LIBRARY ENVIRONMENTAL MANAGEMENT SYSTEM
+  # Temperature, humidity, and magical stability control
+  # ================================================================
+  - name: library_hvac_plc
+    type: hvac_plc
+    device_id: 20
+    description: Library Environmental Controller (Schneider Modicon 1987 + Gateway)
+    location: Library - Mechanical Room L-7
+    zone: control_zone
     protocols:
       modbus:
-        adapter: pymodbus_3114
-        host: localhost
-        port: 15022
-        device_id: 3
-        simulator: true
+        host: 0.0.0.0
+        port: 10505
+        unit_id: 20
+    physics_engine: hvac_physics
+    scan_interval: 1.0  # 1s scan - HVAC is slower
+
+  - name: library_lspace_monitor
+    type: specialty_controller
+    device_id: 21
+    description: L-Space Dimensional Stability Monitor
+    location: Library - Special Collections
+    zone: control_zone
+    protocols:
+      modbus:
+        host: 0.0.0.0
+        port: 10506
+        unit_id: 21
+    scan_interval: 0.5
+
+  # ================================================================
+  # CITY-WIDE DISTRIBUTION SCADA
+  # Substations and grid management
+  # ================================================================
+  - name: substation_rtu_1
+    type: substation_rtu
+    device_id: 100
+    description: Main Substation RTU - Unseen University Campus
+    location: Substation 1 - Campus Grid
+    zone: control_zone
+    protocols:
+      dnp3:
+        host: 0.0.0.0
+        port: 20000
+        master_address: 1
+        outstation_address: 100
+      modbus:
+        host: 0.0.0.0
+        port: 10510
+        unit_id: 100
+    scan_interval: 1.0
+
+  - name: substation_rtu_2
+    type: substation_rtu
+    device_id: 101
+    description: Ankh District Substation RTU
+    location: Substation 2 - Ankh District
+    zone: control_zone
+    protocols:
+      dnp3:
+        host: 0.0.0.0
+        port: 20001
+        master_address: 1
+        outstation_address: 101
+    scan_interval: 1.0
+
+  - name: substation_rtu_3
+    type: substation_rtu
+    device_id: 102
+    description: Morpork District Substation RTU
+    location: Substation 3 - Morpork District
+    zone: control_zone
+    protocols:
+      dnp3:
+        host: 0.0.0.0
+        port: 20002
+        master_address: 1
+        outstation_address: 102
+    scan_interval: 1.0
+
+  # ================================================================
+  # OPERATIONS ZONE - SCADA/HMI
+  # ================================================================
+  - name: scada_server_primary
+    type: scada_server
+    device_id: 200
+    description: Primary SCADA Server (Wonderware System Platform)
+    location: Control Room - Main Building
+    zone: operations_zone
+    protocols:
       opcua:
-        adapter: opcua_asyncua_118
-        endpoint: opc.tcp://localhost:4840
-        simulator: true
+        endpoint: opc.tcp://0.0.0.0:4840
+        security_mode: None
+      modbus:
+        host: 0.0.0.0
+        port: 10520
+        unit_id: 200
+
+  - name: scada_server_backup
+    type: scada_server
+    device_id: 201
+    description: Backup SCADA Server
+    location: Control Room - Main Building
+    zone: operations_zone
+    protocols:
+      opcua:
+        endpoint: opc.tcp://0.0.0.0:4841
+        security_mode: None
+
+  - name: hmi_operator_1
+    type: hmi_workstation
+    device_id: 210
+    description: Operator Workstation 1 (Wonderware InTouch)
+    location: Control Room - Main Building
+    zone: operations_zone
+
+  - name: hmi_operator_2
+    type: hmi_workstation
+    device_id: 211
+    description: Operator Workstation 2
+    location: Control Room - Main Building
+    zone: operations_zone
+
+  - name: hmi_operator_3
+    type: hmi_workstation
+    device_id: 212
+    description: Operator Workstation 3
+    location: Control Room - Main Building
+    zone: operations_zone
+
+  - name: hmi_operator_4
+    type: hmi_workstation
+    device_id: 213
+    description: Operator Workstation 4
+    location: Control Room - Main Building
+    zone: operations_zone
+
+  - name: engineering_workstation
+    type: engineering_workstation
+    device_id: 220
+    description: Engineering/Programming Workstation
+    location: Control Room - Main Building
+    zone: operations_zone
+
+  # ================================================================
+  # ENTERPRISE ZONE - HISTORIANS AND DATA
+  # ================================================================
+  - name: historian_primary
+    type: historian
+    device_id: 300
+    description: Primary Historian (10+ years operational data)
+    location: Server Room
+    zone: enterprise_zone
+    protocols:
+      opcua:
+        endpoint: opc.tcp://0.0.0.0:4850
+
+  - name: legacy_data_collector
+    type: legacy_system
+    device_id: 310
+    description: Legacy Turbine Data Collector (Windows 98)
+    location: Turbine Hall - Control Cabinet
+    zone: enterprise_zone
+    notes: "25 years of turbine data - DO NOT TOUCH"
+    protocols:
+      serial:
+        port: COM1
+        baud: 9600
