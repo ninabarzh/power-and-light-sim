@@ -4,7 +4,7 @@ This directory contains the centralised state management system for the UU Power
 
 ## Overview
 
-Industrial control systems maintain state across hundreds or thousands of data points: valve positions, temperature readings, pump speeds, alarm conditions, and at UU P&L, the occasional metaphysical anomaly. This state must be tracked accurately, updated atomically, and queried efficiently—especially when something is going wrong and you need to know *right now* whether the reactor containment field is holding.
+Industrial control systems maintain state across hundreds or thousands of data points: valve positions, temperature readings, pump speeds, alarm conditions, and at UU P&L, the occasional metaphysical anomaly. This state must be tracked accurately, updated atomically, and queried efficiently, especially when something is going wrong and you need to know *right now* whether the reactor containment field is holding.
 
 The state management system provides:
 

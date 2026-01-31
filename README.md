@@ -1,126 +1,203 @@
-# UU Power & Light ICS Simulator under construction
+# UU Power & Light ICS Simulator
 
-Welcome to the [Unseen University Power & Light Co.](https://red.tymyrddin.dev/docs/power/territory/company) simulator, 
-a deliberately engineered modelling and testing framework for industrial control systems (ICS) and operational 
-technology (OT) environments of the kind described in our territory guides.
+*"Ankh-Morpork's quietly indispensable utility, operating from repurposed university basements and one building that 
+insists it was never meant to be a building at all."*
 
-This simulator is not a toy. It is a *causally correct, layered, testable, and extendible environment* for exploring:
+Welcome to the [Unseen University Power & Light Co.](https://red.tymyrddin.dev/docs/power/territory/company) simulator.
 
-- physics‑aware devices like PLCs and RTUs
-- time‑synchronised network behaviour
-- common OT protocols (Modbus, DNP3, IEC‑104, IEC‑61850, OPC UA, S7, etc.)
-- security and policy enforcement mechanisms  
-- realistic internal scenarios and external adversarial proofs‑of‑concept
+This is a causally correct, layered, and testable simulation of an industrial control system (ICS) environment,
+designed for developing convincing security proofs-of-concept *without risking production systems*.
 
-If you are familiar with OT documentation, from control room hierarchy to PLC risk characteristics, this engine is 
-architected to reflect those realities in code and test strategy.
+## Why this exists
 
-## Project overview
+Real ICS/SCADA environments are:
+- **Fragile**: a misplaced packet can cause physical consequences
+- **Legacy-ridden**: decades-old systems with no security considerations
+- **High-stakes**: blackouts, floods, or worse
+
+This simulator lets you explore attack paths, test detection mechanisms, and develop PoCs against a realistic
+OT environment that won't leave a city in the dark.
+
+## What we're simulating
+
+The [UU P&L infrastructure](https://red.tymyrddin.dev/docs/power/territory/components) includes:
+
+| System                     | Description                                                         | Control Hardware                          |
+|----------------------------|---------------------------------------------------------------------|-------------------------------------------|
+| **Hex Steam Turbine**      | Main power generation with hardwired logic and polling loops        | Allen-Bradley ControlLogix (1998)         |
+| **Alchemical Reactor**     | Volatile energy conversion with chemical and metaphysical variables | Siemens S7-400 (2003)                     |
+| **Library Environmental**  | Temperature, humidity, and magical stability control                | Schneider Modicon (1987) + Modbus gateway |
+| **City-Wide Distribution** | SCADA managing substations across Ankh-Morpork                      | RTUs via DNP3, Wonderware HMI             |
+
+Plus the supporting cast: historians storing 10+ years of operational data, safety PLCs with redundant sensors,
+protective relays, PMUs, and yes, a Windows 98 machine that's been collecting turbine data for 25 years.
+
+## Capabilities
+
+This simulator provides:
+
+- **Physics-aware devices**: PLCs and RTUs with realistic scan cycles (10-100ms)
+- **Time-synchronised behaviour**: deterministic stepping for reproducible scenarios
+- **OT protocols**: Modbus, DNP3, IEC 60870-5-104, IEC 61850, OPC UA, S7comm
+- **Network segmentation**: control zones, DMZs, and firewall simulation
+- **Security layers**: authentication, logging, and anomaly detection
+- **Scenario framework**: both white-box internal tests and black-box external PoCs
+
+## Project structure
 
 ```
 .
-├── components/        # core simulation logic (devices, protocols, state, network, physics, security, time)
-├── config/            # declarative YAML for simulation scenarios, protocols, networks, and devices
-├── scripts/           # scenario scripts and PoC tooling (internal and external)
-├── tests/             # unit, integration, and scenario tests
-├── tools/             # support utilities (simulator manager, test clients)
-├── pyproject.toml     # build, metadata, tooling dependencies
-├── requirements.txt   # explicit runtime dependencies
-├── LICENSE            # project licensing
-└── README.md          # this document
-````
+├── components/
+│   ├── devices/       # PLCs, RTUs, HMIs, historians, safety controllers
+│   ├── network/       # network simulation, TCP proxy, protocol simulation
+│   ├── physics/       # turbine dynamics, power flow, thermal models
+│   ├── protocols/     # Modbus, DNP3, IEC-104, S7, OPC UA semantics
+│   ├── security/      # logging, authentication, anomaly detection
+│   ├── state/         # shared state fabric and data store
+│   └── time/          # deterministic time orchestration
+├── config/            # YAML scenarios, network topologies, device definitions
+├── scripts/
+│   ├── assessment/    # internal white-box scenario scripts
+│   └── recon/         # external black-box PoC tools
+├── tests/
+│   ├── unit/          # component-level tests
+│   ├── integration/   # cross-component tests
+│   └── scenario/      # end-to-end scenario validation
+├── tools/             # simulator manager, test clients
+└── docs/              # additional documentation
+```
 
-This project is *actively under construction*. Its parts are designed to be useful early, but the whole is not yet 
-complete. Expect some modules to feel more finished than others.
+Think of this as an engineer's workbench where:
 
-It helps to think of this simulator as *an engineer’s tinker bench*, where:
+- **Devices** behave according to real industrial logic and timing
+- **Physics** models drive actual state changes (not just data)
+- **Protocols** translate interactions into proper network semantics
+- **Security** observes and constrains without hiding underlying behaviour
 
-- devices (PLCs, HMIs, RTUs, IEDs) behave according to documented industrial logic
-- physics modules model turbines and grid behaviour with real state and time
-- protocols translate interactions into real‑world network semantics
-- security layers observe and constrain without hiding the underlying behaviour
+## Architecture
 
-This mirrors the [key OT components](https://red.tymyrddin.dev/docs/power/territory/components) you might see in the 
-field. From unattended substations to operator workstations, each with unique responsibilities and risks.
+The simulator follows a strict **causal layering**: higher layers consume, never define, lower layers:
 
-## Architecture and grounding
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  8. Scenarios & PoCs                                            │
+│     Internal scripts (white-box) │ External tools (black-box)   │
+├─────────────────────────────────────────────────────────────────┤
+│  7. Adapters & IO                                               │
+│     Real network stacks, protocol libraries, external boundary  │
+├─────────────────────────────────────────────────────────────────┤
+│  6. Security & Policy                                           │
+│     Authentication, encryption, logging, anomaly detection      │
+├─────────────────────────────────────────────────────────────────┤
+│  5. Protocol Semantics                                          │
+│     What Modbus/DNP3/S7 messages mean, not just their bytes     │
+├─────────────────────────────────────────────────────────────────┤
+│  4. Device Layer                                                │
+│     PLCs, RTUs, HMIs, historians, safety controllers            │
+├─────────────────────────────────────────────────────────────────┤
+│  3. Physics Engines                                             │
+│     Turbine dynamics, power flow, thermal models                │
+├─────────────────────────────────────────────────────────────────┤
+│  2. State Fabric                                                │
+│     Consistent shared state that all components read/write      │
+├─────────────────────────────────────────────────────────────────┤
+│  1. Time & Orchestration                                        │
+│     Single time source, deterministic stepping                  │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-The simulator is designed around a strict **causal layering**:
+This maps roughly to the Purdue Model levels you'd find in real ICS environments: from Level 0 field devices
+up through control, operations, and enterprise zones.
 
-1. **Time and orchestration**:   
-   Everything depends on a single source of time with deterministic stepping.
-
-2. **State fabric and data store**:   
-   A consistent, shared state that all components read and write.
-
-3. **Physics engines**:   
-   Real physics modules (turbine dynamics, power flow, etc.) drive behaviour.
-
-4. **Device layer**: 
-   Abstract base devices and concrete implementations (PLCs, RTUs, safety controllers, HMIs, historians).
-
-5. **Protocol semantics**:   
-   High‑level protocol logic that defines what messages *mean*.
-
-6. **Security and policy**:   
-   Gateways that enforce authentication, encryption, logging, and anomaly detection.
-
-7. **Adapters and IO**:   
-   Real network stacks and protocol libraries form the external boundary.
-
-8. **Scenarios and PoCs**: 
-   - **Internal scripts:** panic‑tested, deterministic, white‑box validation
-   - **External tools:** real network interaction, asynchronous, black‑box proofs‑of‑concept
-
-This layered approach ensures clarity: *higher layers consume, not define, lower layers*. If a test imports something 
-above its layer, the architecture needs reconsideration.
-
-For a detailed testing strategy, see `tests/README.md`.
+For detailed testing strategy, see `tests/README.md`.
 
 ## Getting started
 
-Install dependencies:
-
 ```bash
+# Clone and install
+git clone https://github.com/tymyrddin/power-and-light-sim.git
+cd power-and-light-sim
 pip install -r requirements.txt
-```
 
-Set up your configuration (`config/`) to describe:
+# Run tests
+pytest tests/unit                    # Component tests
+pytest tests/unit -m "not slow"      # Skip slower tests
+pytest tests/integration             # Cross-component tests
 
-* target devices and zones
-* network topology
-* simulation parameters
-* protocols and behaviour
-
-Run unit and integration tests:
-
-```bash
-pytest tests/unit
-pytest tests/integration
-```
-
-Run an internal scenario:
-
-```bash
+# Run a scenario
 python scripts/assessment/example_scenario.py
 ```
 
-Run an external PoC (from another terminal or machine):
+Configuration files in `config/` define:
+- Device definitions and control zones
+- Network topology and segmentation
+- Protocol bindings and behaviour
+- Simulation parameters
 
+## Example use cases
+
+**Reconnaissance PoC**: Scan the simulated network, enumerate exposed services, fingerprint PLCs:
 ```bash
-python scripts/recon/your_poc.py
+python scripts/recon/network_scan.py --target control_zone
 ```
 
-## Contributing3
+**Protocol exploitation**: Test Modbus function code abuse against the turbine controller:
+```bash
+python scripts/assessment/modbus_fc_test.py --device hex_turbine_plc
+```
 
-Do not hesitate. Everything is designed for community development:
+**Detection testing**: Validate that anomaly detection catches unauthorised writes:
+```bash
+pytest tests/scenario/test_unauthorized_write_detection.py
+```
 
-* new devices
-* protocol enhancements
-* security rules
-* physics models
-* scenario libraries
+## Status
 
-*Before adding tests*, familiarise yourself with the dependency ordering in `tests/README.md`.
+This project is under active development. Some modules are more complete than others:
 
-Please respect the layering: *fix the architecture, not the test*.
+| Component | Status |
+|-----------|--------|
+| Core devices (PLC, RTU, HMI) | Functional |
+| Network simulation | Functional |
+| Modbus protocol | Functional |
+| DNP3 protocol | In progress |
+| Physics engines | In progress |
+| Security logging | Functional |
+| Scenario framework | Partial |
+
+## Contributing
+
+Contributions welcome:
+
+- New device types (IEDs, PMUs, relays)
+- Protocol implementations
+- Physics models (thermal, hydraulic, electrical)
+- Security rules and detection logic
+- Scenario libraries
+
+Before adding tests, read `tests/README.md` for dependency ordering.
+Respect the layering: *fix the architecture, not the test*.
+
+## Disclaimer
+
+This simulator is for **authorised security research, education, and testing only**.
+Use it to develop and validate PoCs in a safe environment before engaging with real systems
+under proper authorisation.
+
+The authors take no responsibility for misuse. If you're testing real ICS/SCADA systems,
+ensure you have explicit written permission and understand the physical consequences.
+
+## Licence
+
+Public domain ([Unlicense](LICENSE)). Do what you will.
+
+## References
+
+- [UU P&L Company Overview](https://red.tymyrddin.dev/docs/power/territory/company)
+- [ICS Components Guide](https://red.tymyrddin.dev/docs/power/territory/components)
+- [Testing Strategy](tests/README.md)
+
+---
+
+*"The thing about electricity is, once it's out of the bottle, you can't put it back."*
+— Archchancellor Ridcully (probably)
