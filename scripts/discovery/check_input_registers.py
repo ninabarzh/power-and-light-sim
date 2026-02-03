@@ -1,21 +1,28 @@
+#!/usr/bin/env python3
+"""
+Check Input Registers - Discovery of readable input register addresses
+Tests which input register addresses are accessible
+"""
 from pymodbus.client import ModbusTcpClient
 
-client = ModbusTcpClient('127.0.0.1', port=10520)
+client = ModbusTcpClient('127.0.0.1', port=10502)
+client.slave_id = 1
 
 print("Probing Input Registers (function code 04)...")
 print("Address : Value (if accessible)")
 print("-" * 40)
 
 # Try a few strategic starting points for input registers
-# Input registers typically start at address 0 or 30000 in Modbus notation
-# In pymodbus, we use the actual address (0-based)
-test_addresses = [0, 100, 300, 400, 500]
+# In pymodbus 3.x, we use the actual address (0-based)
+test_addresses = [0, 1, 2, 5, 10, 50, 100]
 
 for address in test_addresses:
     try:
-        client.connect()
+        if not client.connect():
+            print("[!] Connection failed")
+            break
         # read_input_registers for function code 04
-        response = client.read_input_registers(address=address, count=1, device_id=1)
+        response = client.read_input_registers(address=address, count=1)
         client.close()
 
         if not response.isError():

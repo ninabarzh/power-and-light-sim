@@ -20,8 +20,8 @@ Input Registers (Read-only 16-bit):
   0: Shaft speed (RPM)
   1: Power output (MW * 10)
   2: Steam pressure (PSI)
-  3: Steam temperature (°F)
-  4: Bearing temperature (°F)
+  3: Steam temperature (°C)
+  4: Bearing temperature (°C)
   5: Vibration (mils * 10)
   6: Overspeed time (seconds)
   7: Damage level (percent)
@@ -66,7 +66,7 @@ class TurbinePLC(BasePLC):
     Exposes Modbus memory map for SCADA access.
     """
 
-    # Modbus register definitions for adapter setup
+    # Modbus register definitions (matches actual memory map implementation)
     DEFAULT_SETUP = {
         "coils": {
             0: False,  # Governor enable
@@ -82,20 +82,20 @@ class TurbinePLC(BasePLC):
             5: False,  # Over-frequency trip
         },
         "input_registers": {
-            100: 0,  # Shaft speed
-            101: 0,  # Power output
-            102: 0,  # Steam pressure
-            103: 0,  # Steam temperature
-            104: 0,  # Bearing temperature
-            105: 0,  # Vibration
-            106: 0,  # Overspeed time
-            107: 0,  # Damage level
-            108: 0,  # Grid frequency
-            109: 0,  # Grid voltage
+            0: 0,  # Shaft speed (RPM)
+            1: 0,  # Power output (MW * 10)
+            2: 0,  # Steam pressure (PSI)
+            3: 0,  # Steam temperature (°C)
+            4: 0,  # Bearing temperature (°C)
+            5: 0,  # Vibration (mils * 10)
+            6: 0,  # Overspeed time (seconds)
+            7: 0,  # Damage level (percent)
+            8: 0,  # Grid frequency (Hz * 100)
+            9: 0,  # Grid voltage (pu * 1000)
         },
         "holding_registers": {
-            200: 0,  # Speed setpoint (lower 16 bits)
-            201: 0,  # Speed setpoint (upper bits, for >65535)
+            0: 0,  # Speed setpoint (lower 16 bits)
+            1: 0,  # Speed setpoint (upper bits, for >65535)
         },
     }
 
@@ -177,8 +177,8 @@ class TurbinePLC(BasePLC):
         self.memory_map["input_registers[0]"] = 0  # Shaft speed (RPM)
         self.memory_map["input_registers[1]"] = 0  # Power output (MW * 10)
         self.memory_map["input_registers[2]"] = 0  # Steam pressure (PSI)
-        self.memory_map["input_registers[3]"] = 0  # Steam temperature (°F)
-        self.memory_map["input_registers[4]"] = 0  # Bearing temperature (°F)
+        self.memory_map["input_registers[3]"] = 0  # Steam temperature (°C)
+        self.memory_map["input_registers[4]"] = 0  # Bearing temperature (°C)
         self.memory_map["input_registers[5]"] = 0  # Vibration (mils * 10)
         self.memory_map["input_registers[6]"] = 0  # Overspeed time (seconds)
         self.memory_map["input_registers[7]"] = 0  # Damage level (percent)
@@ -218,14 +218,14 @@ class TurbinePLC(BasePLC):
 
         # Alarm conditions
         self.memory_map["discrete_inputs[6]"] = turbine_telem.get("vibration_mils", 0) > 8.0
-        self.memory_map["discrete_inputs[7]"] = turbine_telem.get("bearing_temperature_f", 0) > 180
+        self.memory_map["discrete_inputs[7]"] = turbine_telem.get("bearing_temperature_c", 0) > 82  # 82°C = 180°F
 
         # Update input registers (analog telemetry)
         self.memory_map["input_registers[0]"] = int(turbine_telem.get("shaft_speed_rpm", 0))
         self.memory_map["input_registers[1]"] = int(turbine_telem.get("power_output_mw", 0) * 10)
         self.memory_map["input_registers[2]"] = int(turbine_telem.get("steam_pressure_psi", 0))
-        self.memory_map["input_registers[3]"] = int(turbine_telem.get("steam_temperature_f", 0))
-        self.memory_map["input_registers[4]"] = int(turbine_telem.get("bearing_temperature_f", 0))
+        self.memory_map["input_registers[3]"] = int(turbine_telem.get("steam_temperature_c", 0))
+        self.memory_map["input_registers[4]"] = int(turbine_telem.get("bearing_temperature_c", 0))
         self.memory_map["input_registers[5]"] = int(turbine_telem.get("vibration_mils", 0) * 10)
         self.memory_map["input_registers[6]"] = int(turbine_telem.get("overspeed_time_sec", 0))
         self.memory_map["input_registers[7]"] = int(turbine_telem.get("damage_percent", 0))

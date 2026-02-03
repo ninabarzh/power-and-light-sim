@@ -64,6 +64,9 @@ omit = [
     "*/\\.git/*",          # Git directory
     "*/\\.pytest_cache/*", # Pytest cache
     "*/__init__.py",       # Exclude all __init__.py files
+    "*/scripts/*",         # Black box attack scripts
+    "*/logs/*",            # Logs
+    "*/reports/*",         # Reports
 ]
 
 [tool.coverage.report]

@@ -1,53 +1,61 @@
+#!/usr/bin/env python3
+"""
+Scan Unit IDs - Modbus Unit ID Discovery
+Scans for responsive unit IDs on a Modbus TCP server
+"""
 from pymodbus.client import ModbusTcpClient
 import time
 
-client = ModbusTcpClient('127.0.0.1', port=10520)
+# Scan multiple ports to find all devices
+ports = [10502, 10503, 10504, 10505, 10506, 10510, 10520]
 
-print("Scanning for responsive Unit IDs...")
-print("Unit ID | Holding Reg 0 | Input Reg 0 | Responsive?")
-print("-" * 55)
+print("Scanning for responsive Unit IDs across all simulator ports...")
+print(f"{'Port':<7} | {'Unit ID':<8} | {'HR[0]':<12} | {'IR[0]':<12} | Responsive?")
+print("-" * 70)
 
 # Common Modbus Unit IDs to test
-unit_ids_to_test = [1, 2, 3, 4, 5, 6, 7, 8, 16, 32, 64, 127, 255]
+unit_ids_to_test = [1, 2, 3, 10, 20, 21, 100, 200]
 
-for unit_id in unit_ids_to_test:
-    try:
-        client.connect()
+for port in ports:
+    client = ModbusTcpClient('127.0.0.1', port=port)
 
-        # Try to read holding register 0
-        hr_response = client.read_holding_registers(address=0, count=1, device_id=unit_id)
+    for unit_id in unit_ids_to_test:
+        try:
+            if not client.connect():
+                break
 
-        # Brief pause between requests
-        time.sleep(0.1)
+            # Set unit ID for pymodbus 3.x
+            client.slave_id = unit_id
 
-        # Try input register 0
-        ir_response = client.read_input_registers(address=0, count=1, device_id=unit_id)
+            # Try to read holding register 0
+            hr_response = client.read_holding_registers(address=0, count=1)
 
-        client.close()
+            # Brief pause between requests
+            time.sleep(0.05)
 
-        responsive = False
-        hr_value = "N/A"
-        ir_value = "N/A"
+            # Try input register 0
+            ir_response = client.read_input_registers(address=0, count=1)
 
-        if not hr_response.isError():
-            hr_value = hr_response.registers[0]
-            responsive = True
-        else:
-            hr_value = f"Err:{hr_response.exception_code if hasattr(hr_response, 'exception_code') else 'X'}"
+            responsive = False
+            hr_value = "N/A"
+            ir_value = "N/A"
 
-        if not ir_response.isError():
-            ir_value = ir_response.registers[0]
-            responsive = True
-        else:
-            ir_value = f"Err:{ir_response.exception_code if hasattr(ir_response, 'exception_code') else 'X'}"
+            if not hr_response.isError():
+                hr_value = hr_response.registers[0]
+                responsive = True
 
-        status = "YES" if responsive else "NO"
-        print(f"{unit_id:6d} | {str(hr_value):12s} | {str(ir_value):11s} | {status}")
+            if not ir_response.isError():
+                ir_value = ir_response.registers[0]
+                responsive = True
 
-    except Exception as e:
-        print(f"{unit_id:6d} | ERROR: {e}")
-        client.close()
+            if responsive:
+                status = "YES"
+                print(f"{port:<7} | {unit_id:<8} | {str(hr_value):<12} | {str(ir_value):<12} | {status}")
 
-    time.sleep(0.2)  # Gentle pacing between IDs
+        except Exception as e:
+            pass  # Suppress errors for non-responsive unit IDs
 
-print("Unit ID scan complete.")
+    client.close()
+    time.sleep(0.1)
+
+print("\n[*] Unit ID scan complete.")

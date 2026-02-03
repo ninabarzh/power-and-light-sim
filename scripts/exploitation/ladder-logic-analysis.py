@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""
+Analyse extracted PLC ladder logic to identify security issues
+Demonstrates what an attacker learns from configuration access
+"""
+
+
+def analyse_ladder_logic(logic_file):
+    """
+    Parse ladder logic to identify security-relevant information
+    This is simplified; real ladder logic analysis is more complex
+
+    Args:
+        logic_file: Path to ladder logic file (e.g., .l5k for Allen-Bradley)
+
+    Returns:
+        dict: Security findings from the configuration
+    """
+
+    findings = {
+        'safety_critical_rungs': [],
+        'hardcoded_credentials': [],
+        'undocumented_functions': [],
+        'alarm_thresholds': [],
+        'network_connections': []
+    }
+
+    # NOTE: This is a proof-of-concept demonstration
+    # Real implementation would parse actual ladder logic files using libraries like:
+    # - pycomm3 for Allen-Bradley .l5k files
+    # - python-snap7 for Siemens Step 7
+    # - Custom parsers for specific PLC formats
+
+    print(f"[*] Analyzing configuration file: {logic_file}")
+    print("[*] (Simulated analysis - in reality would parse actual file)\n")
+
+    # Simulated findings that would be extracted from real ladder logic
+    findings['safety_critical_rungs'] = [
+        {
+            'rung': 127,
+            'description': 'Emergency shutdown logic',
+            'condition': 'Temperature > 95C OR Pressure > 150 PSI',
+            'action': 'Close inlet valve, stop pump'
+        }
+    ]
+
+    findings['hardcoded_credentials'] = [
+        {
+            'location': 'Rung 445',
+            'credential': 'FTP connection to 192.168.20.10',
+            'username': 'admin',
+            'password_hash': 'MD5:5f4dcc3b5aa765d61d8327deb882cf99'
+        }
+    ]
+
+    findings['alarm_thresholds'] = [
+        {'parameter': 'Temperature', 'warning': 85, 'critical': 95, 'unit': 'C'},
+        {'parameter': 'Pressure', 'warning': 130, 'critical': 150, 'unit': 'PSI'},
+        {'parameter': 'Vibration', 'warning': 5.0, 'critical': 8.0, 'unit': 'mm/s'}
+    ]
+
+    findings['network_connections'] = [
+        {
+            'type': 'Modbus TCP',
+            'destination': '192.168.20.10:502',
+            'purpose': 'SCADA data collection'
+        },
+        {
+            'type': 'FTP',
+            'destination': '192.168.20.15:21',
+            'purpose': 'Backup configuration'
+        }
+    ]
+
+    return findings
+
+
+def demonstrate_configuration_analysis():
+    """Show impact of configuration access"""
+
+    print("=" * 70)
+    print("[*] Proof of Concept: Ladder Logic Security Analysis")
+    print("[*] Demonstrating information available from extracted configurations")
+    print("=" * 70 + "\n")
+
+    # In a real scenario, this would be an actual extracted file
+    findings = analyse_ladder_logic('turbine_plc.l5k')
+
+    print("[*] SAFETY-CRITICAL LOGIC DISCOVERED:")
+    print("-" * 70)
+    for item in findings['safety_critical_rungs']:
+        print(f"\n    Rung {item['rung']}: {item['description']}")
+        print(f"    Condition: {item['condition']}")
+        print(f"    Action: {item['action']}")
+        print("\n    ⚠️  IMPACT: Attacker knows exact conditions that trigger safety systems")
+        print("       Could craft attacks that stay just below these thresholds")
+
+    print("\n[*] HARDCODED CREDENTIALS FOUND:")
+    print("-" * 70)
+    for item in findings['hardcoded_credentials']:
+        print(f"\n    Location: {item['location']}")
+        print(f"    Connection: {item['credential']}")
+        print(f"    Username: {item['username']}")
+        print(f"    Password Hash: {item['password_hash']}")
+        print("    (Hash corresponds to 'password' - easily crackable)")
+        print("\n    ⚠️  IMPACT: Credentials could be cracked offline, used for lateral movement")
+
+    print("\n[*] ALARM THRESHOLDS DISCOVERED:")
+    print("-" * 70)
+    for item in findings['alarm_thresholds']:
+        print(
+            f"    {item['parameter']:<15} Warning={item['warning']:>6}  Critical={item['critical']:>6} {item['unit']}")
+    print("\n    ⚠️  IMPACT: Attacker knows exactly when alarms trigger")
+    print("       Could manipulate values to stay below alarm thresholds")
+
+    print("\n[*] NETWORK CONNECTIONS IDENTIFIED:")
+    print("-" * 70)
+    for item in findings['network_connections']:
+        print(f"    {item['type']:<15} -> {item['destination']:<25} ({item['purpose']})")
+    print("\n    ⚠️  IMPACT: Network topology revealed, additional attack targets identified")
+
+    print("\n[*] DEFENSIVE RECOMMENDATIONS:")
+    print("-" * 70)
+    print("    1. Encrypt ladder logic files at rest")
+    print("    2. Use key-based authentication instead of passwords")
+    print("    3. Implement code signing for PLC programs")
+    print("    4. Monitor for unauthorized configuration downloads")
+    print("    5. Use randomized or dynamic alarm thresholds where possible")
+    print("\n" + "=" * 70)
+
+
+if __name__ == '__main__':
+    demonstrate_configuration_analysis()

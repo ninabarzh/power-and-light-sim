@@ -10,6 +10,7 @@ NOTE: This is a READ-ONLY demonstration. No values are modified.
 from pymodbus.client import ModbusTcpClient
 import json
 from datetime import datetime
+from pathlib import Path
 
 
 def read_turbine_config(plc_ip, port, unit_id):
@@ -21,83 +22,115 @@ def read_turbine_config(plc_ip, port, unit_id):
         print(f"    [!] Failed to connect to {plc_ip}:{port}")
         return None
 
+    # Set the unit ID on the client for pymodbus 3.x
+    client.slave_id = unit_id
+
     config = {}
 
-    # Speed setpoint (register 1000)
-    result = client.read_holding_registers(address=1000, count=1)
+    # Speed setpoint (holding register 0)
+    result = client.read_holding_registers(address=0, count=1)
     if not result.isError():
         config['speed_setpoint_rpm'] = result.registers[0]
     else:
         config['speed_setpoint_rpm'] = None
 
-    # Temperature alarm threshold (register 1050)
-    result = client.read_holding_registers(address=1050, count=1)
-    if not result.isError():
-        config['temp_alarm_threshold_c'] = result.registers[0]
-    else:
-        config['temp_alarm_threshold_c'] = None
-
-    # Emergency stop status (register 1100)
-    result = client.read_holding_registers(address=1100, count=1)
-    if not result.isError():
-        config['emergency_stop_active'] = bool(result.registers[0])
-    else:
-        config['emergency_stop_active'] = None
-
-    # Read input registers for current operational values
-    result = client.read_input_registers(address=2000, count=1)
+    # Current shaft speed (input register 0)
+    result = client.read_input_registers(address=0, count=1)
     if not result.isError():
         config['current_speed_rpm'] = result.registers[0]
     else:
         config['current_speed_rpm'] = None
 
-    result = client.read_input_registers(address=2050, count=1)
+    # Power output (input register 1, MW * 10)
+    result = client.read_input_registers(address=1, count=1)
     if not result.isError():
-        config['current_temperature_c'] = result.registers[0]
+        config['power_output_mw'] = result.registers[0] / 10.0
     else:
-        config['current_temperature_c'] = None
+        config['power_output_mw'] = None
 
-    # Additional safety parameters
-    result = client.read_holding_registers(address=1200, count=1)
+    # Steam pressure (input register 2, PSI)
+    result = client.read_input_registers(address=2, count=1)
     if not result.isError():
-        config['vibration_threshold'] = result.registers[0]
+        config['steam_pressure_psi'] = result.registers[0]
     else:
-        config['vibration_threshold'] = None
+        config['steam_pressure_psi'] = None
 
-    # Pressure limits
-    result = client.read_holding_registers(address=1300, count=1)
+    # Steam temperature (input register 3, °C)
+    result = client.read_input_registers(address=3, count=1)
     if not result.isError():
-        config['pressure_limit_psi'] = result.registers[0]
+        config['steam_temperature_c'] = result.registers[0]
     else:
-        config['pressure_limit_psi'] = None
+        config['steam_temperature_c'] = None
 
-    # Power output setpoint
-    result = client.read_holding_registers(address=1400, count=1)
-    if not result.isError():
-        config['power_output_setpoint_kw'] = result.registers[0]
-    else:
-        config['power_output_setpoint_kw'] = None
-
-    # Generator frequency
-    result = client.read_input_registers(address=2100, count=1)
-    if not result.isError():
-        config['generator_frequency_hz'] = result.registers[0]
-    else:
-        config['generator_frequency_hz'] = None
-
-    # Oil pressure
-    result = client.read_input_registers(address=2150, count=1)
-    if not result.isError():
-        config['oil_pressure_psi'] = result.registers[0]
-    else:
-        config['oil_pressure_psi'] = None
-
-    # Bearing temperature
-    result = client.read_input_registers(address=2200, count=1)
+    # Bearing temperature (input register 4, °C)
+    result = client.read_input_registers(address=4, count=1)
     if not result.isError():
         config['bearing_temperature_c'] = result.registers[0]
     else:
         config['bearing_temperature_c'] = None
+
+    # Vibration (input register 5, mils * 10)
+    result = client.read_input_registers(address=5, count=1)
+    if not result.isError():
+        config['vibration_mils'] = result.registers[0] / 10.0
+    else:
+        config['vibration_mils'] = None
+
+    # Overspeed time (input register 6, seconds)
+    result = client.read_input_registers(address=6, count=1)
+    if not result.isError():
+        config['overspeed_time_s'] = result.registers[0]
+    else:
+        config['overspeed_time_s'] = None
+
+    # Damage level (input register 7, percent)
+    result = client.read_input_registers(address=7, count=1)
+    if not result.isError():
+        config['damage_level_pct'] = result.registers[0]
+    else:
+        config['damage_level_pct'] = None
+
+    # Grid frequency (input register 8, Hz * 100)
+    result = client.read_input_registers(address=8, count=1)
+    if not result.isError():
+        config['grid_frequency_hz'] = result.registers[0] / 100.0
+    else:
+        config['grid_frequency_hz'] = None
+
+    # Grid voltage (input register 9, pu * 1000)
+    result = client.read_input_registers(address=9, count=1)
+    if not result.isError():
+        config['grid_voltage_pu'] = result.registers[0] / 1000.0
+    else:
+        config['grid_voltage_pu'] = None
+
+    # Read discrete inputs (status flags)
+    result = client.read_discrete_inputs(address=0, count=6)
+    if not result.isError():
+        config['turbine_running'] = result.bits[0]
+        config['governor_online'] = result.bits[1]
+        config['trip_active'] = result.bits[2]
+        config['overspeed_condition'] = result.bits[3]
+        config['underfreq_trip'] = result.bits[4]
+        config['overfreq_trip'] = result.bits[5]
+    else:
+        config['turbine_running'] = None
+        config['governor_online'] = None
+        config['trip_active'] = None
+        config['overspeed_condition'] = None
+        config['underfreq_trip'] = None
+        config['overfreq_trip'] = None
+
+    # Read coils (control flags)
+    result = client.read_coils(address=0, count=3)
+    if not result.isError():
+        config['governor_enable'] = result.bits[0]
+        config['emergency_trip'] = result.bits[1]
+        config['trip_reset'] = result.bits[2]
+    else:
+        config['governor_enable'] = None
+        config['emergency_trip'] = None
+        config['trip_reset'] = None
 
     client.close()
 
@@ -149,20 +182,26 @@ def demonstrate_impact():
 
             print(f"    Speed Setpoint: {config['speed_setpoint_rpm']} RPM")
             print(f"    Current Speed: {config['current_speed_rpm']} RPM")
-            print(f"    Temperature Alarm: {config['temp_alarm_threshold_c']}°C")
-            print(f"    Current Temperature: {config['current_temperature_c']}°C")
-            print(f"    E-Stop Active: {config['emergency_stop_active']}")
-            print(f"    Vibration Threshold: {config['vibration_threshold']}")
-            print(f"    Pressure Limit: {config['pressure_limit_psi']} PSI")
-            print(f"    Power Setpoint: {config['power_output_setpoint_kw']} KW")
-            print(f"    Generator Frequency: {config['generator_frequency_hz']} Hz")
-            print(f"    Oil Pressure: {config['oil_pressure_psi']} PSI")
+            print(f"    Power Output: {config['power_output_mw']} MW")
+            print(f"    Steam Pressure: {config['steam_pressure_psi']} PSI")
+            print(f"    Steam Temperature: {config['steam_temperature_c']}°C")
             print(f"    Bearing Temperature: {config['bearing_temperature_c']}°C")
-
-            # Calculate operational margin
-            if config['current_temperature_c'] and config['temp_alarm_threshold_c']:
-                margin = config['temp_alarm_threshold_c'] - config['current_temperature_c']
-                print(f"    Temperature Safety Margin: {margin}°C")
+            print(f"    Vibration: {config['vibration_mils']} mils")
+            print(f"    Overspeed Time: {config['overspeed_time_s']}s")
+            print(f"    Damage Level: {config['damage_level_pct']}%")
+            print(f"    Grid Frequency: {config['grid_frequency_hz']} Hz")
+            print(f"    Grid Voltage: {config['grid_voltage_pu']} pu")
+            print(f"    Status:")
+            print(f"      - Turbine Running: {config['turbine_running']}")
+            print(f"      - Governor Online: {config['governor_online']}")
+            print(f"      - Trip Active: {config['trip_active']}")
+            print(f"      - Overspeed Condition: {config['overspeed_condition']}")
+            print(f"      - Under-frequency Trip: {config['underfreq_trip']}")
+            print(f"      - Over-frequency Trip: {config['overfreq_trip']}")
+            print(f"    Controls:")
+            print(f"      - Governor Enable: {config['governor_enable']}")
+            print(f"      - Emergency Trip: {config['emergency_trip']}")
+            print(f"      - Trip Reset: {config['trip_reset']}")
             print()
         else:
             print(f"    [!] Could not read from {name}\n")
@@ -201,7 +240,11 @@ def demonstrate_impact():
         }
     }
 
-    filename = f'poc_turbine_read_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+    # Ensure reports directory exists
+    reports_dir = Path(__file__).parent.parent.parent / "reports"
+    reports_dir.mkdir(exist_ok=True)
+
+    filename = reports_dir / f'poc_turbine_read_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
     with open(filename, 'w') as f:
         json.dump(output, f, indent=2)
 

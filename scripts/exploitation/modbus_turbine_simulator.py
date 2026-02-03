@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+from pymodbus.server import StartTcpServer
+from pymodbus.datastore import ModbusSequentialDataBlock
+from pymodbus.datastore import ModbusServerContext, ModbusDeviceContext
+
+
+def create_turbine_simulator():
+    # Coils (digital outputs)
+    coils = ModbusSequentialDataBlock(0, [0] * 3000)
+    # Discrete inputs
+    discrete_inputs = ModbusSequentialDataBlock(0, [0] * 3000)
+    # Holding registers (setpoints)
+    holding_registers = ModbusSequentialDataBlock(0, [0] * 3000)
+    holding_registers.setValues(1000, [1500])  # Speed setpoint
+    holding_registers.setValues(1050, [95])  # Temp alarm
+    holding_registers.setValues(1100, [0])  # E‑stop
+    # Input registers (measurements)
+    input_registers = ModbusSequentialDataBlock(0, [0] * 3000)
+    input_registers.setValues(2000, [1498])  # Current speed
+    input_registers.setValues(2050, [72])  # Current temperature
+
+    # ✅ pymodbus 3.11.x correct way
+    device = ModbusDeviceContext(
+        di=discrete_inputs,
+        co=coils,
+        hr=holding_registers,
+        ir=input_registers,
+    )
+    return ModbusServerContext(devices=device, single=True)
+
+
+if __name__ == "__main__":
+    context = create_turbine_simulator()
+    print("[*] UU P&L Turbine PLC simulator running")
+    print("[*] Listening on 0.0.0.0:502")
+    StartTcpServer(
+        context=context,
+        address=("0.0.0.0", 502),
+    )

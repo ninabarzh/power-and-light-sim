@@ -387,7 +387,7 @@ class LegacyWorkstation(BaseDevice):
                 timestamp=self.sim_time.now(),
                 turbine_speed_rpm=float(state.shaft_speed_rpm),
                 power_output_mw=float(state.power_output_mw),
-                bearing_temp_c=float((state.bearing_temperature_f - 32) * 5/9),  # Convert F to C
+                bearing_temp_c=float(state.bearing_temperature_c),  # Already in Celsius
                 vibration_mm_s=float(state.vibration_mils * 0.0254),  # Convert mils to mm/s
                 governor_position=float(governor_estimate),
             )

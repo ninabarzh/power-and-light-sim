@@ -82,6 +82,15 @@ class ConfigLoader:
         else:
             config["hmi_workstations"] = {}
 
+        # Load device identity config
+        device_identity_path = self.config_dir / "device_identity.yml"
+        if device_identity_path.exists():
+            with open(device_identity_path) as f:
+                identity_data = yaml.safe_load(f)
+                config["device_identities"] = identity_data.get("device_identities", {})
+        else:
+            config["device_identities"] = {}
+
         return config
 
     def _create_default_devices(self):

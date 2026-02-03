@@ -214,7 +214,7 @@ class TurbineSafetyPLC(BaseSafetyController):
         # Get base values
         actual_speed = turbine_telem.get("shaft_speed_rpm", 0)
         actual_vibration = turbine_telem.get("vibration_mils", 0)
-        actual_bearing_temp = turbine_telem.get("bearing_temperature_f", 70)
+        actual_bearing_temp = turbine_telem.get("bearing_temperature_c", 21)  # 21°C = 70°F
 
         # Simulate dual-channel sensors with small discrepancy (0.5%)
         import random

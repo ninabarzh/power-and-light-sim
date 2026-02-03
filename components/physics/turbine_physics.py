@@ -33,8 +33,8 @@ class TurbineState:
     Attributes:
         shaft_speed_rpm: Current shaft rotational speed
         steam_pressure_psi: Steam inlet pressure
-        steam_temperature_f: Steam inlet temperature
-        bearing_temperature_f: Bearing temperature
+        steam_temperature_c: Steam inlet temperature in Celsius
+        bearing_temperature_c: Bearing temperature in Celsius
         vibration_mils: Vibration amplitude in mils (0.001 inch)
         power_output_mw: Electrical power output in megawatts
         cumulative_overspeed_time: Total time spent above rated speed
@@ -43,8 +43,8 @@ class TurbineState:
 
     shaft_speed_rpm: float = 0.0
     steam_pressure_psi: float = 0.0
-    steam_temperature_f: float = 0.0
-    bearing_temperature_f: float = 70.0
+    steam_temperature_c: float = 0.0
+    bearing_temperature_c: float = 21.0  # 70°F = 21°C
     vibration_mils: float = 0.0
     power_output_mw: float = 0.0
     cumulative_overspeed_time: float = 0.0
@@ -60,7 +60,7 @@ class TurbineParameters:
         rated_power_mw: Maximum continuous power output
         max_safe_speed_rpm: Overspeed trip point (typically 110% rated)
         max_steam_pressure_psi: Maximum design pressure
-        max_steam_temp_f: Maximum design temperature
+        max_steam_temp_c: Maximum design temperature in Celsius
         inertia: Rotational inertia in kg·m²
         acceleration_rate: Maximum acceleration in RPM/second
         deceleration_rate: Natural deceleration in RPM/second
@@ -72,7 +72,7 @@ class TurbineParameters:
     rated_power_mw: float = 100.0
     max_safe_speed_rpm: int = 3960  # 110% overspeed trip
     max_steam_pressure_psi: int = 2400
-    max_steam_temp_f: int = 1000
+    max_steam_temp_c: int = 538  # 1000°F = 538°C
     inertia: float = 5000.0
     acceleration_rate: float = 100.0  # RPM/s
     deceleration_rate: float = 50.0  # RPM/s
@@ -342,13 +342,13 @@ class TurbinePhysics:
         ambient_temp = 70.0
         thermal_time_constant = 0.1  # Faster cooling during shutdown
 
-        self.state.bearing_temperature_f += (
-            (ambient_temp - self.state.bearing_temperature_f)
+        self.state.bearing_temperature_c += (
+            (ambient_temp - self.state.bearing_temperature_c)
             * thermal_time_constant
             * dt
         )
-        self.state.steam_temperature_f += (
-            (ambient_temp - self.state.steam_temperature_f)
+        self.state.steam_temperature_c += (
+            (ambient_temp - self.state.steam_temperature_c)
             * thermal_time_constant
             * 0.5
             * dt
@@ -369,8 +369,8 @@ class TurbinePhysics:
 
         # First-order thermal lag
         thermal_time_constant = 0.1
-        temp_error = target_bearing_temp - self.state.bearing_temperature_f
-        self.state.bearing_temperature_f += temp_error * thermal_time_constant * dt
+        temp_error = target_bearing_temp - self.state.bearing_temperature_c
+        self.state.bearing_temperature_c += temp_error * thermal_time_constant * dt
 
         # Steam temperature correlates with load
         if self.state.shaft_speed_rpm > 100:
@@ -382,8 +382,8 @@ class TurbinePhysics:
 
         # Steam has slower thermal response
         steam_time_constant = 0.05
-        temp_error = target_steam_temp - self.state.steam_temperature_f
-        self.state.steam_temperature_f += temp_error * steam_time_constant * dt
+        temp_error = target_steam_temp - self.state.steam_temperature_c
+        self.state.steam_temperature_c += temp_error * steam_time_constant * dt
 
         # Pressure follows similar dynamics
         pressure_error = target_steam_pressure - self.state.steam_pressure_psi
@@ -470,9 +470,9 @@ class TurbinePhysics:
         telemetry = {
             # Holding registers (analog values)
             "holding_registers[0]": int(self.state.shaft_speed_rpm),
-            "holding_registers[1]": int(self.state.steam_temperature_f),
+            "holding_registers[1]": int(self.state.steam_temperature_c),
             "holding_registers[2]": int(self.state.steam_pressure_psi),
-            "holding_registers[3]": int(self.state.bearing_temperature_f),
+            "holding_registers[3]": int(self.state.bearing_temperature_c),
             "holding_registers[4]": int(
                 self.state.vibration_mils * 10
             ),  # 0.1 mil resolution
@@ -485,7 +485,7 @@ class TurbinePhysics:
             > self.params.max_safe_speed_rpm,  # Overspeed
             "coils[2]": self.state.vibration_mils
             > self.params.vibration_critical_mils,  # High vibration
-            "coils[3]": self.state.bearing_temperature_f > 150,  # High bearing temp
+            "coils[3]": self.state.bearing_temperature_c > 65,  # High bearing temp (65°C = 149°F)
             "coils[4]": self.state.damage_level > 0.5,  # Severe damage
         }
 
@@ -513,8 +513,8 @@ class TurbinePhysics:
             "shaft_speed_rpm": int(self.state.shaft_speed_rpm),
             "power_output_mw": round(self.state.power_output_mw, 1),
             "steam_pressure_psi": int(self.state.steam_pressure_psi),
-            "steam_temperature_f": int(self.state.steam_temperature_f),
-            "bearing_temperature_f": int(self.state.bearing_temperature_f),
+            "steam_temperature_c": int(self.state.steam_temperature_c),
+            "bearing_temperature_c": int(self.state.bearing_temperature_c),
             "vibration_mils": round(self.state.vibration_mils, 1),
             "turbine_running": self.state.shaft_speed_rpm > 100,
             "governor_online": self._control_cache.get("governor_enabled", False),

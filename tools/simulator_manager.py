@@ -628,6 +628,7 @@ class SimulatorManager:
             return engine_getter()
         return engine_getter
 
+
     async def _expose_services(self, config: dict[str, Any]) -> None:
         """Start protocol servers for devices based on config.
 
@@ -647,9 +648,11 @@ class SimulatorManager:
 
         devices = config.get("devices", [])
 
-        # Collect all server start tasks for parallel execution
-        server_tasks = []
-        server_metadata = []  # Store (device_name, proto_name, server_obj) for each task
+        # Separate Modbus servers (sequential) from others (parallel)
+        # Modbus uses pymodbus ModbusDeviceIdentification which has shared class attributes
+        modbus_servers = []  # List of (device_name, proto_name, server_obj, port)
+        other_server_tasks = []  # Tasks for parallel execution
+        other_server_metadata = []  # Metadata for other servers
 
         for device_cfg in devices:
             device_name = device_cfg.get("name")
@@ -682,6 +685,11 @@ class SimulatorManager:
                         host = proto_cfg.get("host", "0.0.0.0")
                         unit_id = proto_cfg.get("unit_id", 1)
 
+                        # Get device identity from config for realistic fingerprinting
+                        device_type = device_cfg.get("type", "")
+                        device_identities = config.get("device_identities", {})
+                        device_identity = device_identities.get(device_type, device_identities.get("default", {}))
+
                         # Create Modbus TCP server with pymodbus simulator
                         server = ModbusTCPServer(
                             host=host,
@@ -691,11 +699,11 @@ class SimulatorManager:
                             num_discrete_inputs=64,
                             num_holding_registers=256,
                             num_input_registers=256,
+                            device_identity=device_identity,
                         )
 
-                        # Collect for parallel start
-                        server_tasks.append(server.start())
-                        server_metadata.append((device_name, proto_name, server, port))
+                        # Collect Modbus servers for sequential start (not parallel)
+                        modbus_servers.append((device_name, proto_name, server, port))
 
                     except Exception as e:
                         logger.error(f"Failed to create {proto_name} server for {device_name}: {e}")
@@ -719,8 +727,8 @@ class SimulatorManager:
                         )
 
                         # Collect for parallel start
-                        server_tasks.append(server.start())
-                        server_metadata.append((device_name, proto_name, server, port))
+                        other_server_tasks.append(server.start())
+                        other_server_metadata.append((device_name, proto_name, server, port))
 
                     except Exception as e:
                         logger.error(f"Failed to create {proto_name} server for {device_name}: {e}")
@@ -743,8 +751,8 @@ class SimulatorManager:
                         )
 
                         # Collect for parallel start
-                        server_tasks.append(server.start())
-                        server_metadata.append((device_name, proto_name, server, port))
+                        other_server_tasks.append(server.start())
+                        other_server_metadata.append((device_name, proto_name, server, port))
 
                     except Exception as e:
                         logger.error(f"Failed to create {proto_name} server for {device_name}: {e}")
@@ -762,8 +770,8 @@ class SimulatorManager:
                         )
 
                         # Collect for parallel start
-                        server_tasks.append(server.start())
-                        server_metadata.append((device_name, proto_name, server, port))
+                        other_server_tasks.append(server.start())
+                        other_server_metadata.append((device_name, proto_name, server, port))
 
                     except Exception as e:
                         logger.error(f"Failed to create {proto_name} server for {device_name}: {e}")
@@ -788,8 +796,8 @@ class SimulatorManager:
                         )
 
                         # Collect for parallel start
-                        server_tasks.append(server.start())
-                        server_metadata.append((device_name, proto_name, server, port))
+                        other_server_tasks.append(server.start())
+                        other_server_metadata.append((device_name, proto_name, server, port))
 
                     except Exception as e:
                         logger.error(f"Failed to create {proto_name} server for {device_name}: {e}")
@@ -798,15 +806,32 @@ class SimulatorManager:
                     # Protocol not yet implemented
                     logger.info(f"Exposed {proto_name} service (server not implemented): {device_name}:{port}")
 
-        # Start all servers in PARALLEL for fast initialization
-        if server_tasks:
-            logger.info(f"Starting {len(server_tasks)} protocol servers in parallel...")
+        # Start Modbus servers SEQUENTIALLY (pymodbus class attribute workaround)
+        if modbus_servers:
+            logger.info(f"Starting {len(modbus_servers)} Modbus servers sequentially...")
+            for device_name, proto_name, server, port in modbus_servers:
+                try:
+                    result = await server.start()
+                    if result:
+                        server_key = f"{device_name}:{proto_name}"
+                        self.protocol_servers[server_key] = server
+                        logger.info(f"Started {proto_name} server: {device_name}:{port}")
+                    else:
+                        logger.warning(
+                            f"{proto_name} server for {device_name}:{port} failed to start"
+                        )
+                except Exception as e:
+                    logger.error(f"Failed to start {proto_name} server for {device_name}:{port}: {e}")
+
+        # Start other servers in PARALLEL for fast initialization
+        if other_server_tasks:
+            logger.info(f"Starting {len(other_server_tasks)} other protocol servers in parallel...")
 
             # Run all server.start() calls concurrently
-            results = await asyncio.gather(*server_tasks, return_exceptions=True)
+            results = await asyncio.gather(*other_server_tasks, return_exceptions=True)
 
             # Process results and store successful servers
-            for i, (device_name, proto_name, server, port) in enumerate(server_metadata):
+            for i, (device_name, proto_name, server, port) in enumerate(other_server_metadata):
                 result = results[i]
 
                 if isinstance(result, Exception):

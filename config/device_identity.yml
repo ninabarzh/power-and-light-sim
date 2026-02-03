@@ -1,0 +1,121 @@
+# config/device_identity.yml
+# Modbus Device Identification (Function Code 43 / MEI 14)
+#
+# Maps device types to realistic vendor/model/firmware information.
+# This data is exposed via Modbus Read Device Identification (FC 43)
+# for device fingerprinting and reconnaissance.
+#
+# Security Impact:
+# - Reveals vendor, model, and firmware without authentication
+# - Enables targeted exploit selection based on known CVE databases
+# - Identifies legacy/EOL equipment as high-value targets
+# - Exposes product codes for supply chain enumeration
+
+device_identities:
+  # ================================================================
+  # TURBINE CONTROL SYSTEM
+  # ================================================================
+  turbine_plc:
+    vendor: "Allen-Bradley"
+    product_code: "1756-L73"
+    model: "ControlLogix 5570"
+    revision: "20.011"
+    product_name: "ControlLogix PLC"
+    vendor_url: "www.rockwellautomation.com"
+    application: "Turbine_Control_v3.2"
+    notes: "Ancient 1998 ControlLogix - likely has vulnerabilities"
+
+  turbine_safety_plc:
+    vendor: "HIMA"
+    product_code: "H51q-HS"
+    model: "HIMatrix F60"
+    revision: "5.2.1"
+    product_name: "Safety PLC SIL 3"
+    vendor_url: "www.hima.com"
+    application: "Turbine_Safety_SIS"
+    notes: "Safety-rated but still exposes identity"
+
+  # ================================================================
+  # REACTOR CONTROL SYSTEM
+  # ================================================================
+  reactor_plc:
+    vendor: "Siemens"
+    product_code: "6ES7 417-4HL04-0AB0"
+    model: "S7-400 CPU 417-4"
+    revision: "6.0.3"
+    product_name: "SIMATIC S7-400"
+    vendor_url: "www.siemens.com"
+    application: "Reactor_Control_v2.1"
+    notes: "Old 2003 S7-400 firmware"
+
+  reactor_safety_plc:
+    vendor: "Siemens"
+    product_code: "6ES7 416-5HS06-0AB0"
+    model: "S7-400H Safety"
+    revision: "6.0.9"
+    product_name: "SIMATIC S7-400 F/FH"
+    vendor_url: "www.siemens.com"
+    application: "Reactor_Safety_v1.5"
+    notes: "Failsafe S7-400 variant"
+
+  # ================================================================
+  # HVAC CONTROL SYSTEM
+  # ================================================================
+  hvac_plc:
+    vendor: "Schneider Electric"
+    product_code: "140CPU65150"
+    model: "Modicon Quantum"
+    revision: "2.9"
+    product_name: "Quantum 140CPU"
+    vendor_url: "www.se.com"
+    application: "HVAC_Control_v4.0"
+    notes: "Legacy 1987 Modicon with Modbus gateway"
+
+  specialty_controller:
+    vendor: "Custom ICS Solutions"
+    product_code: "LSPACE-MON-01"
+    model: "L-Space Monitor"
+    revision: "0.9-beta"
+    product_name: "Dimensional Stability Monitor"
+    vendor_url: ""
+    application: "LSpace_Monitor_Alpha"
+    notes: "Custom controller - beta firmware!"
+
+  # ================================================================
+  # SUBSTATION RTUs
+  # ================================================================
+  substation_rtu:
+    vendor: "ABB"
+    product_code: "RTU560"
+    model: "RTU560 Series"
+    revision: "12.4.1"
+    product_name: "Substation RTU"
+    vendor_url: "www.abb.com"
+    application: "Substation_Control"
+    notes: "Standard substation RTU"
+
+  # ================================================================
+  # SCADA SERVERS
+  # ================================================================
+  scada_server:
+    vendor: "Wonderware"
+    product_code: "System Platform 2017"
+    model: "InTouch SCADA"
+    revision: "2017 Update 3"
+    product_name: "System Platform"
+    vendor_url: "www.aveva.com"
+    application: "SCADA_Server_Primary"
+    notes: "Wonderware System Platform with Modbus gateway"
+
+  # ================================================================
+  # DEFAULT / GENERIC
+  # ================================================================
+  default:
+    vendor: "Generic"
+    product_code: "UNKNOWN"
+    model: "Generic PLC"
+    revision: "1.0"
+    product_name: "Industrial Controller"
+    vendor_url: ""
+    application: "Unknown_Application"
+    notes: "Fallback for unrecognized device types"
