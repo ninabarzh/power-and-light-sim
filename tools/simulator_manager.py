@@ -39,10 +39,13 @@ from components.time.simulation_time import SimulationTime, wait_simulation_time
 from config.config_loader import ConfigLoader
 
 # Configure logging
+log_dir = Path("logs")
+log_dir.mkdir(exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(), logging.FileHandler("logs/simulation.log")],
+    handlers=[logging.StreamHandler(), logging.FileHandler(log_dir / "simulation.log")],
 )
 logger = logging.getLogger(__name__)
 
