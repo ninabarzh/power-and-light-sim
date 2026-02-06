@@ -783,6 +783,9 @@ class TestBaseDeviceConcurrency:
             write_loop("holding_registers[1]", 100),
         )
 
+        # Stop device to freeze state before checking (prevents race condition)
+        await started_device.stop()
+
         # Both should have completed
         assert started_device.memory_map["holding_registers[0]"] >= 0
         assert started_device.memory_map["holding_registers[1]"] >= 100
