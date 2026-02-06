@@ -4,7 +4,7 @@
 
 ## Current state (verified)
 
-**Simulator:**
+Simulator:
 - Runs locally via `python tools/simulator_manager.py`
 - In-memory state only (no persistence)
 - Single-user (one simulator per machine)
@@ -14,14 +14,14 @@
 - No automatic reset capability
 - 247MB project size
 
-**Dependencies:**
+Dependencies:
 - Python 3.12
 - 20+ protocol libraries (pymodbus, asyncua, snap7, etc.)
 - No containerization
 - No web interface
 - No user management
 
-**Access:**
+Access:
 - Requires local Python installation
 - Requires cloning repository
 - Requires running scripts via command line
@@ -29,7 +29,7 @@
 
 ## Target state
 
-**Public service on Hetzner Cloud:**
+Public service on Hetzner Cloud:
 - Anyone can access via web browser
 - Each user gets isolated simulator instance
 - Instances reset automatically (hourly/daily)
@@ -42,30 +42,28 @@
 
 ### 1. Containerisation
 
-**Create Dockerfile:**
+Create Dockerfile:
 - Base image: python:3.12-slim
 - Install all dependencies from requirements.txt
 - Copy simulator code
 - Expose required ports (102, 502, 4840, 20000, 44818, 2404)
 - Entry point: simulator_manager.py
 
-**Verify:**
+Verify:
 - All protocols work in container
 - Port mappings correct
 - Logs accessible outside container
 
-**Effort:** 1-2 days
-
-**Deliverables:**
+Deliverables:
 - `Dockerfile`
 - `docker-compose.yml` for testing
 - Documentation for building image
 
 ### 2. State reset mechanism
 
-**Currently:** State persists until manual restart
+Currently: State persists until manual restart
 
-**Needs:**
+Needs:
 ```python
 # Add to simulator_manager.py
 async def reset_simulator():
@@ -77,26 +75,24 @@ async def reset_simulator():
     # Restart protocol servers
 ```
 
-**Trigger options:**
+Trigger options:
 - Timer-based (every N minutes)
 - HTTP endpoint (/reset)
 - CLI command (docker exec ... reset)
 
-**Effort:** 1 day
-
-**Deliverables:**
+Deliverables:
 - Reset function in simulator
 - Configuration option for auto-reset interval
 - HTTP endpoint for manual reset
 
 ### 3. Web terminal access
 
-**Tech stack:**
+Tech stack:
 - xterm.js (terminal emulator in browser)
 - websockets (communication)
 - Python backend (pty spawning)
 
-**Implementation:**
+Implementation:
 ```python
 # web_terminal.py
 import asyncio
@@ -109,7 +105,7 @@ async def handle_terminal(websocket):
     # Allow running attack scripts
 ```
 
-**Frontend:**
+Frontend:
 ```html
 <!-- terminal.html -->
 <div id="terminal"></div>
@@ -121,9 +117,7 @@ async def handle_terminal(websocket):
 </script>
 ```
 
-**Effort:** 2-3 days
-
-**Deliverables:**
+Deliverables:
 - Web terminal server
 - HTML frontend
 - Integration with container
@@ -131,17 +125,17 @@ async def handle_terminal(websocket):
 
 ### 4. User isolation and multi-tenancy
 
-**Currently:** Single simulator per deployment
+Currently: Single simulator per deployment
 
-**Needs:**
+Needs:
 
-**One container per user**
+One container per user
 - Spawn new container for each user
 - User connects to their container's web terminal
 - Container auto-destroyed after N hours of inactivity
 - Requires orchestration
 
-**Orchestration needs:**
+Orchestration needs:
 ```python
 # container_manager.py
 class ContainerManager:
@@ -157,9 +151,7 @@ class ContainerManager:
         """List all running user containers."""
 ```
 
-**Effort:** 3-4 days
-
-**Deliverables:**
+Deliverables:
 - Container orchestration script
 - User instance lifecycle management
 - Clean-up of idle instances
@@ -167,7 +159,7 @@ class ContainerManager:
 
 ### 5. Landing page and user flow
 
-**User flow:**
+User flow:
 1. Visit https://uu-power-light.org or a domain like that
 2. Click "Start Hacking"
 3. System spawns container (takes 10-30 seconds)
@@ -175,7 +167,7 @@ class ContainerManager:
 5. User runs attack scripts
 6. After 2 hours idle: container destroyed
 
-**Landing page needs:**
+Landing page needs:
 ```html
 <!-- index.html -->
 <h1>UU Power & Light Simulator</h1>
@@ -195,7 +187,7 @@ async function startSimulator() {
 </script>
 ```
 
-**Backend API:**
+Backend API:
 ```python
 # api.py
 @app.post("/api/start")
@@ -213,9 +205,7 @@ async def terminal_ws(instance_id: str):
     # Forward websocket to container pty
 ```
 
-**Effort:** 2 days
-
-**Deliverables:**
+Deliverables:
 - Landing page HTML/CSS/JS
 - Backend API (FastAPI or Flask)
 - Integration with container manager
@@ -223,31 +213,31 @@ async def terminal_ws(instance_id: str):
 
 ### 6. Hetzner Cloud infrastructure
 
-**What needs to be provisioned:**
+What needs to be provisioned:
 
-**Server:**
+Server:
 - Hetzner CX41 or CX51 (4-8 vCPUs, 16-32GB RAM)
 - Cost: €15-30/month
 - Ubuntu 22.04 LTS
 - Docker and Docker Compose installed
 - Firewall configured
 
-**Storage:**
+Storage:
 - 50-100GB SSD (logs, container images)
 - Container image caching
 
-**Network:**
+Network:
 - Floating IP (static IP)
 - Firewall rules:
   - Allow: 80 (HTTP), 443 (HTTPS), 22 (SSH)
   - Block: All OT protocol ports from internet (102, 502, 4840, etc.)
   - Internal: Containers can bind to 127.0.0.1, accessed via web terminal only
 
-**DNS:**
+DNS:
 - Point domain to Hetzner floating IP
 - Let's Encrypt SSL certificate (via Certbot)
 
-**Setup:**
+Setup:
 ```bash
 # On Hetzner server
 apt update && apt upgrade -y
@@ -269,9 +259,7 @@ python3 deployment/container_manager.py &
 certbot --nginx -d uu-power-light.org
 ```
 
-**Effort:** 1 day (if experienced with Hetzner)
-
-**Deliverables:**
+Deliverables:
 - Hetzner account and server
 - DNS configuration
 - SSL certificate
@@ -280,14 +268,14 @@ certbot --nginx -d uu-power-light.org
 
 ### 7. Monitoring and operations
 
-**Essential monitoring:**
+Essential monitoring:
 - How many containers running?
 - CPU/RAM usage
 - Disk space
 - Containers stuck/crashed
 - User activity
 
-**Implementation:**
+Implementation:
 ```python
 # monitoring.py
 @app.get("/api/stats")
@@ -300,7 +288,7 @@ async def get_stats():
     }
 ```
 
-**Dashboard (simple HTML):**
+Dashboard (simple HTML):
 ```html
 <!-- admin.html -->
 <h2>Admin Dashboard</h2>
@@ -310,15 +298,13 @@ async def get_stats():
 <button onclick="cleanupAll()">Cleanup Idle</button>
 ```
 
-**Alerting:**
+Alerting:
 - Disk space > 90%: Email alert
 - Memory > 90%: Email alert
 - Service down: Email alert
 - Simple Python script checking every 5 minutes
 
-**Effort:** 1-2 days
-
-**Deliverables:**
+Deliverables:
 - Monitoring endpoint
 - Admin dashboard
 - Alert script
@@ -326,7 +312,7 @@ async def get_stats():
 
 ### 8. Cost and resource management
 
-**Resource limits per container:**
+Resource limits per container:
 ```yaml
 # docker-compose.yml for user container
 services:
@@ -339,182 +325,172 @@ services:
           memory: 512M
 ```
 
-**Calculation:**
+Calculation:
 - Server: 8 vCPUs, 32GB RAM
 - Per container: 0.5 CPU, 512MB RAM
 - Max concurrent users: ~40-50
 - Typical concurrent users: 5-10
 - Cost: €30/month + domain (~€35/month total)
 
-**If usage grows:**
+If usage grows:
 - Scale vertically (bigger server)
 - Or scale horizontally (multiple servers with load balancer)
 
-**Effort:** Included in container orchestration
-
 ### 9. Documentation and maintenance
 
-**User documentation:**
+User documentation:
 - Landing page: Quick start guide
 - Challenge links (to existing workshop docs)
 - FAQ (common issues)
 - Contact/support info
 
-**Admin documentation:**
+Admin documentation:
 - Deployment guide
 - Backup procedures
 - Update procedures
 - Troubleshooting common issues
 - Cost analysis
 
-**Maintenance tasks:**
+Maintenance tasks:
 - Update dependencies (monthly)
 - Update base Docker image (quarterly)
 - Monitor costs (monthly)
 - Review logs for abuse (weekly)
 - Clean up old logs (automated)
 
-**Effort:** 1-2 days (initial), 2-4 hours/month (ongoing)
-
 ## Work breakdown
 
-### Phase 1: Make it deployable (1 week)
-- Day 1-2: Dockerfile and containerisation
-- Day 3: State reset mechanism
-- Day 4-5: Web terminal implementation
-- Day 6-7: Testing in local Docker
+### Make it deployable 
+- Dockerfile and containerisation
+- State reset mechanism
+- Web terminal implementation
+- Testing in local Docker
 
-### Phase 2: Multi-tenancy (1 week)
-- Day 1-2: Container orchestration
-- Day 3-4: Landing page and API
-- Day 5-7: Testing with multiple users locally
+### Multi-tenancy
+- Container orchestration
+- Landing page and API
+- Testing with multiple users locally
 
-### Phase 3: Deploy to Hetzner (3 days)
-- Day 1: Provision server, DNS, SSL
-- Day 2: Deploy and configure
-- Day 3: Monitoring and documentation
+### Deploy to Hetzner
+- Provision server, DNS, SSL
+- Deploy and configure
+- Monitoring and documentation
 
-### Phase 4: Polish and launch (2-3 days)
-- Day 1: Load testing
-- Day 2: Security review
-- Day 3: Documentation and announcement
+### Polish and launch
+- Load testing
+- Security review
+- Documentation and announcement
 
-**Total effort: 3-4 weeks**
+Total effort: 3-4 weeks
 
 ## Technical decisions needed
 
 ### 1. Container orchestration
 
-**Option A: Simple Python script**
+Simple Python script
 - Pros: Easy to understand, no external dependencies
 - Cons: Manual scaling, no HA
 - Recommended for MVP
 
-**Option B: Docker Swarm**
+And who knows, much, much later:
+
+Docker Swarm
 - Pros: Built-in orchestration, easier than Kubernetes
 - Cons: Learning curve, overkill for single server
 
-**Option C: Kubernetes**
+Or:
+
+Kubernetes
 - Pros: Industry standard, scales infinitely
 - Cons: Massive overkill, complexity nightmare
 
-**Recommendation: Start with Option A**
-
 ### 2. User persistence
 
-**Option A: No persistence (stateless)**
+No persistence (stateless)
 - Container destroyed after timeout
 - No user accounts
 - Simple but can't save progress
 
-**Option B: Optional save/restore**
+We could:
+
+Optional save/restore
 - User gets unique ID
 - Can save state to S3/storage
 - Can restore later
 - More complex
 
-**Recommendation: Start with Option A, add Option B later if requested**
-
 ### 3. Access control
 
-**Option A: Public, no auth**
-- Anyone can start instance
-- Risk of abuse (crypto mining, proxying)
-- Simple
-
-**Option B: Email-gated**
+When on-line, email-gated
 - Enter email to start
 - Rate limit per email
-- Reduces abuse
 
-**Option C: Full auth**
+An option when online would be:
+
+Full auth
 - User accounts, login
 - Complex, overkill
 
-**Recommendation: Start with Option A, add Option B if abused**
-
 ## Risks and mitigations
 
-**Risk: Crypto mining**
+Risk: Crypto mining
 - CPU limits per container (0.5 CPU)
 - Monitor CPU usage patterns
 - Ban IPs with sustained high CPU
 
-**Risk: Using as proxy/attack platform**
+Risk: Using as proxy/attack platform
 - Don't expose OT protocol ports to internet
 - Only web terminal accessible externally
 - Log all activity
 - Ban abusive IPs
 
-**Risk: Running out of resources**
+Risk: Running out of resources
 - Hard limits per container
 - Max N containers total
 - Queue if at capacity
 
-**Risk: Costs spiral**
+Risk: Costs spiral
 - Set budget alerts in Hetzner
 - Monitor monthly costs
 - Auto-shutdown if costs exceed threshold
 
-**Risk: Service goes down**
+Risk: Service goes down
 - Simple monitoring and alerts
 - Document recovery procedures
 - Accept occasional downtime (not mission-critical)
 
 ## Post-launch operations
 
-**Weekly:**
+Weekly:
 - Review logs for abuse
 - Check resource usage
 - Verify backups
 
-**Monthly:**
+Monthly:
 - Review costs
 - Update dependencies
 - Review user feedback
 
-**Quarterly:**
+Quarterly:
 - Security audit
 - Performance optimisation
 - Feature requests evaluation
 
-**Estimated ongoing time: 4-8 hours/month**
-
 ## Success metrics
 
-**Usage:**
+Usage:
 - Active users per day
 - Total instances spawned per month
 - Average session duration
 - Return users
 
-**Technical:**
+Technical:
 - Uptime percentage
 - Average container spawn time
 - Resource utilization
 - Cost per user
 
-**Community:**
+Community:
 - GitHub stars
 - Workshop adoptions
 - User feedback
@@ -551,16 +527,16 @@ Focus on: Zero-friction access to working simulator.
 
 ## Estimated costs
 
-**Development:**
+Development:
 - 3-4 weeks developer time
 
-**Ongoing monthly:**
+Ongoing monthly:
 - Hetzner CX51: €30/month
 - Domain: €1/month
 - Backups: €5/month
-- **Total: ~€35-40/month**
+- Total: ~€35-40/month
 
-**Time:**
+Time:
 - Setup: 3-4 weeks
 - Maintenance: 4-8 hours/month
 
@@ -568,14 +544,14 @@ Focus on: Zero-friction access to working simulator.
 
 If 3-4 weeks is too much cost or timewise, a simpler version could be:
 
-**Week 1: Basic Docker deployment**
+Week 1: Basic Docker deployment
 - Containerise simulator
 - Deploy to single Hetzner server
 - Expose SSH access with web instructions
 - Manual instance management
 - No fancy web terminal
 
-**Result:**
+Result:
 - Documentation says: "SSH to uu-pl.org, run attack scripts"
 - Each user gets SSH account (created manually)
 - Simpler but functional
