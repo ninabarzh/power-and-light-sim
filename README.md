@@ -163,7 +163,7 @@ For SCADA wiring documentation, see [docs/SCADA_WIRING.md](docs/scada_wiring.md)
 
 ```bash
 # Clone and install
-git clone https://github.com/tymyrddin/power-and-light-sim.git
+git clone https://github.com/ninabarzh/power-and-light-sim.git
 cd power-and-light-sim
 pip install -r requirements.txt
 
@@ -347,3 +347,5 @@ If you are unsure whether your use case is commercial, ask. [Ambiguity is solvab
 
 *"The thing about electricity is, once it's out of the bottle, you can't put it back."*
 — Archchancellor Ridcully (probably)
+
+Last Updated: February 2026

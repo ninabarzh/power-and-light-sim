@@ -1,0 +1,117 @@
+name: Feature Request
+description: Suggest a new device, protocol, physics model, or security feature
+title: "[FEATURE]: "
+labels: ["enhancement", "needs-discussion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Proposing new features? Excellent. Be specific about what you want and why it matters.
+
+        *"Ideas are cheap. Implementation plans are valuable."*
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: What type of feature are you proposing?
+      options:
+        - New Device (PLC, RTU, IED, relay, etc.)
+        - Protocol Implementation (Modbus, DNP3, OPC UA, etc.)
+        - Physics Model (turbine, reactor, hydraulic, etc.)
+        - Security Feature (detection, logging, SIEM rule, etc.)
+        - Network Simulation (topology, latency, firewall, etc.)
+        - Documentation or Examples
+        - Other (explain in description)
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What security research or training need does this address?
+      placeholder: "Currently impossible to test attacks against Siemens S7-1200 because we don't simulate it..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: What specifically should be implemented?
+      placeholder: |
+        Add Siemens S7-1200 device class:
+        - Inherit from S7PLC base class
+        - Implement S7-1200 specific memory layout
+        - Add TIA Portal v17 data block structure
+        - Include realistic firmware version strings
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Approaches
+      description: Are there other ways to solve this problem?
+      placeholder: "Could extend existing S7-400 implementation instead of new device class..."
+
+  - type: textarea
+    id: research
+    attributes:
+      label: Security Research Value
+      description: How would this improve ICS security research or training?
+      placeholder: "S7-1200 is widely deployed in small industrial sites. Testing attacks against it helps defenders..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Implementation Notes
+      description: Technical details, architecture considerations, or implementation challenges
+      placeholder: |
+        - Would require S7 protocol extensions
+        - Need to research S7-1200 memory layout
+        - Should maintain compatibility with existing S7 adapter
+        - Estimated 500-800 lines of code
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Links to documentation, research papers, protocol specs, or similar implementations
+      placeholder: |
+        - Siemens S7-1200 datasheet: [link]
+        - snap7 S7-1200 support: [link]
+        - Similar implementation in [other project]: [link]
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Estimated Complexity
+      description: How difficult is this to implement?
+      options:
+        - Simple (few hours, minimal changes)
+        - Moderate (few days, single subsystem)
+        - Complex (weeks, multiple subsystems)
+        - Major (months, architectural changes)
+        - Unknown (needs investigation)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution Intent
+      options:
+        - label: I'm willing to implement this myself with guidance
+        - label: I can provide technical specifications or documentation
+        - label: I can help test this feature once implemented
+        - label: I'm requesting this but cannot contribute implementation
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Anything else relevant? Use cases, deployment scenarios, related features?

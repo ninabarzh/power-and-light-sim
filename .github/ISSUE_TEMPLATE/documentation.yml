@@ -1,0 +1,119 @@
+name: Documentation Improvement
+description: Suggest improvements to documentation, examples, or guides
+title: "[DOCS]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Good documentation prevents Ponder having to explain the same thing repeatedly. If you found something confusing, others will too.
+
+        *"The difference between 'obvious' and 'documented' is the difference between working code and used code."*
+
+  - type: dropdown
+    id: doc_type
+    attributes:
+      label: Documentation Type
+      description: What kind of documentation needs improvement?
+      options:
+        - README or Getting Started
+        - Architecture documentation
+        - API documentation or docstrings
+        - Configuration guide (YAML files)
+        - Device implementation guide
+        - Protocol documentation
+        - Attack scenario examples
+        - Testing documentation
+        - Contribution guidelines
+        - Other (explain below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's Missing or Unclear?
+      description: What documentation issue did you encounter?
+      placeholder: |
+        The architecture.md doesn't explain how to add a new protocol implementation.
+        I had to read three different files to understand the adapter pattern.
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: Affected Documentation
+      description: Which files or sections need improvement?
+      placeholder: |
+        - docs/architecture.md (Protocol subsystem section)
+        - components/protocols/README.md (missing)
+        - No examples of creating custom protocol adapters
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Improvement
+      description: What should be added, changed, or clarified?
+      placeholder: |
+        Add a section to architecture.md showing:
+        1. How to create a new protocol adapter
+        2. Required methods to implement
+        3. Example: Creating a simple protocol from scratch
+        4. Link to existing implementations as reference
+
+  - type: textarea
+    id: audience
+    attributes:
+      label: Target Audience
+      description: Who would benefit from this documentation?
+      placeholder: |
+        - Security researchers adding custom protocols
+        - Students learning about ICS protocols
+        - Contributors implementing new protocol support
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this documentation gap?
+      options:
+        - High (blocking contributors or new users)
+        - Medium (causes confusion but workarounds exist)
+        - Low (nice to have, not urgent)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution Intent
+      options:
+        - label: I can write this documentation myself with guidance
+        - label: I can provide technical details for someone else to document
+        - label: I'm identifying the gap but cannot write it myself
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples or References
+      description: Links to good examples from other projects, or rough draft of what you'd add
+      placeholder: |
+        Similar guide in another project: [link]
+
+        Or rough draft:
+        ```markdown
+        ## Creating a Custom Protocol Adapter
+
+        1. Create adapter class inheriting from BaseProtocol...
+        ```
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Anything else relevant? Related documentation, common questions, etc.
