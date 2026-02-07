@@ -268,11 +268,14 @@ This project is under active development. Current implementation status:
 | Historian (10-year data retention) | ✅ Functional   | Via OPC UA               |
 | Network attack surfaces            | ✅ Functional   | Real TCP ports           |
 | Modbus TCP/RTU protocol            | ✅ Functional   | mbtget, pymodbus         |
+| IEC 60870-5-104 protocol           | ✅ Functional   | IEC 104 clients          |
 | S7 protocol                        | 🔄 Partial     | Not exposed yet          |
 | DNP3 protocol                      | 🔄 In progress | Not exposed yet          |
 | Physics engines (turbine, reactor) | ✅ Functional   | Via device PLCs          |
-| Security logging                   | ✅ Functional   | ICS log format           |
+| Security logging (ICSLogger)       | ✅ Functional   | IEC 62443, ISA 18.2      |
+| ICS audit trails & alarms          | ✅ Functional   | All devices integrated   |
 | External tool testing              | ✅ Ready        | nmap, mbtget, Metasploit |
+| Test coverage                      | ✅ 1386 tests   | Unit + Integration       |
 
 **Legend:** ✅ = Complete, 🔄 = In Progress, ❌ = Not Started
 

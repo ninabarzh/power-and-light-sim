@@ -353,6 +353,97 @@ await ied.start()
 
 ## Device Architecture
 
+### ICSLogger Integration
+
+All devices include integrated structured logging via `ICSLogger` from `components/security/logging_system.py`. This provides ICS-compliant audit trails, alarm management, and security event logging.
+
+**Features:**
+- **Audit Trail**: All configuration changes, control commands, and user actions logged
+- **Alarm Logging**: Operational alarms (alarm floods, failures) with priorities (ISA 18.2)
+- **Security Logging**: Security-sensitive events (unauthorized access, credential extraction)
+- **User Attribution**: All audit logs include user/operator information
+
+**Example Usage:**
+```python
+from components.security.logging_system import (
+    get_logger, AlarmPriority, AlarmState, EventSeverity
+)
+
+class CustomPLC:
+    def __init__(self, device_name, data_store):
+        # Get ICSLogger instance
+        self.logger = get_logger(__name__, device=device_name)
+
+    async def configure_setpoint(self, value, user="system"):
+        """Configure setpoint with audit trail."""
+        old_value = self.setpoint
+        self.setpoint = value
+
+        # Log configuration change
+        await self.logger.log_audit(
+            message=f"Setpoint changed from {old_value} to {value}",
+            user=user,
+            action="config_change",
+            result="SUCCESS",
+            data={"old": old_value, "new": value}
+        )
+
+    async def check_alarms(self):
+        """Check conditions and raise alarms."""
+        if self.temperature > 90.0 and not self.alarm_raised:
+            # Raise high temperature alarm
+            await self.logger.log_alarm(
+                message=f"High temperature: {self.temperature}°C",
+                priority=AlarmPriority.HIGH,
+                state=AlarmState.ACTIVE,
+                data={"temperature": self.temperature, "threshold": 90.0}
+            )
+            self.alarm_raised = True
+        elif self.temperature < 80.0 and self.alarm_raised:
+            # Clear alarm with hysteresis
+            await self.logger.log_alarm(
+                message=f"Temperature normal: {self.temperature}°C",
+                priority=AlarmPriority.HIGH,
+                state=AlarmState.CLEARED,
+                data={"temperature": self.temperature}
+            )
+            self.alarm_raised = False
+
+    async def detect_security_event(self, event_type, user):
+        """Log security-sensitive operations."""
+        await self.logger.log_security(
+            message=f"Security event: {event_type} by {user}",
+            severity=EventSeverity.WARNING,
+            user=user,
+            data={"event_type": event_type}
+        )
+```
+
+**Best Practices:**
+- Use `log_audit()` for all user-initiated actions (setpoint changes, mode changes, resets)
+- Use `log_alarm()` for operational conditions with alarm hysteresis to prevent flapping
+- Use `log_security()` for security-sensitive events (credential access, unauthorized writes)
+- Always include user attribution in audit logs
+- Include context data for forensic analysis
+
+**Methods Requiring ICSLogger:**
+When adding ICSLogger to devices, remember these methods become async:
+```python
+# Before ICSLogger
+def configure_tag(self, tag_name, value):
+    self.tags[tag_name] = value
+
+# After ICSLogger - must be async
+async def configure_tag(self, tag_name, value, user="system"):
+    self.tags[tag_name] = value
+    await self.logger.log_audit(
+        message=f"Tag configured: {tag_name}",
+        user=user,
+        action="tag_config",
+        data={"tag": tag_name, "value": value}
+    )
+```
+
 ### Scan Cycle Pattern
 
 All devices follow a consistent scan cycle pattern:
