@@ -35,8 +35,8 @@ class ConcreteS7PLC(S7PLC):
     async def _initialise_memory_map(self) -> None:
         """Initialise test memory map with DBs."""
         # Create Data Blocks
-        self.create_db(1, {"temperature": 0.0, "pressure": 0.0, "running": False})
-        self.create_db(2, {"setpoint": 100.0, "mode": 0})
+        await self.create_db(1, {"temperature": 0.0, "pressure": 0.0, "running": False})
+        await self.create_db(2, {"setpoint": 100.0, "mode": 0})
 
         self.memory_map = {
             "DB1": self.data_blocks[1].copy(),
@@ -176,7 +176,7 @@ class TestS7PLCDataBlocks:
     @pytest.mark.asyncio
     async def test_create_db(self, started_s7_plc):
         """Test creating a Data Block."""
-        result = started_s7_plc.create_db(
+        result = await started_s7_plc.create_db(
             10, {"value1": 0, "value2": 0.0, "flag": False}
         )
 
@@ -187,8 +187,8 @@ class TestS7PLCDataBlocks:
     @pytest.mark.asyncio
     async def test_create_duplicate_db_fails(self, started_s7_plc):
         """Test that creating duplicate DB fails."""
-        started_s7_plc.create_db(20, {"test": 0})
-        result = started_s7_plc.create_db(20, {"test2": 0})
+        await started_s7_plc.create_db(20, {"test": 0})
+        result = await started_s7_plc.create_db(20, {"test2": 0})
 
         assert result is False
 
@@ -218,7 +218,7 @@ class TestS7PLCDataBlocks:
     @pytest.mark.asyncio
     async def test_write_db(self, started_s7_plc):
         """Test writing to Data Block."""
-        result = started_s7_plc.write_db(1, "pressure", 150.0)
+        result = await started_s7_plc.write_db(1, "pressure", 150.0)
 
         assert result is True
         assert started_s7_plc.data_blocks[1]["pressure"] == 150.0
@@ -226,7 +226,7 @@ class TestS7PLCDataBlocks:
     @pytest.mark.asyncio
     async def test_write_db_nonexistent(self, started_s7_plc):
         """Test writing to non-existent DB fails."""
-        result = started_s7_plc.write_db(999, "test", 0)
+        result = await started_s7_plc.write_db(999, "test", 0)
 
         assert result is False
 

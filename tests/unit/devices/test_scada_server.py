@@ -251,12 +251,13 @@ class TestSCADAServerPolling:
 class TestSCADAServerTags:
     """Test SCADA server tag management."""
 
-    def test_add_tag(self, test_scada):
+    @pytest.mark.asyncio
+    async def test_add_tag(self, test_scada):
         """Test adding a tag.
 
         WHY: Tags map device data to named points.
         """
-        test_scada.add_tag(
+        await test_scada.add_tag(
             tag_name="TURB1_SPEED",
             device_name="plc_1",
             address_type="holding_register",
@@ -272,12 +273,13 @@ class TestSCADAServerTags:
         assert tag.address == 0
         assert tag.unit == "RPM"
 
-    def test_add_tag_with_alarms(self, test_scada):
+    @pytest.mark.asyncio
+    async def test_add_tag_with_alarms(self, test_scada):
         """Test adding a tag with alarm limits.
 
         WHY: Tags can have alarm thresholds.
         """
-        test_scada.add_tag(
+        await test_scada.add_tag(
             tag_name="REACTOR_TEMP",
             device_name="plc_1",
             address_type="holding_register",
@@ -290,12 +292,13 @@ class TestSCADAServerTags:
         assert tag.alarm_high == 350.0
         assert tag.alarm_low == 100.0
 
-    def test_tag_initial_quality(self, test_scada):
+    @pytest.mark.asyncio
+    async def test_tag_initial_quality(self, test_scada):
         """Test that new tags have 'uncertain' quality.
 
         WHY: Tags should be uncertain until polled.
         """
-        test_scada.add_tag(
+        await test_scada.add_tag(
             tag_name="TEST_TAG",
             device_name="plc_1",
             address_type="holding_register",
@@ -311,7 +314,7 @@ class TestSCADAServerTags:
 
         WHY: Public API for reading tags.
         """
-        test_scada.add_tag(
+        await test_scada.add_tag(
             tag_name="TEST_TAG",
             device_name="plc_1",
             address_type="holding_register",
@@ -333,7 +336,7 @@ class TestSCADAServerTags:
 
         WHY: Need full tag details for HMI display.
         """
-        test_scada.add_tag(
+        await test_scada.add_tag(
             tag_name="TEST_TAG",
             device_name="plc_1",
             address_type="holding_register",
@@ -363,9 +366,9 @@ class TestSCADAServerTags:
 
         WHY: HMI may need all tags at once.
         """
-        test_scada.add_tag("TAG_1", "plc_1", "holding_register", 0)
-        test_scada.add_tag("TAG_2", "plc_1", "holding_register", 1)
-        test_scada.add_tag("TAG_3", "plc_2", "coil", 0)
+        await test_scada.add_tag("TAG_1", "plc_1", "holding_register", 0)
+        await test_scada.add_tag("TAG_2", "plc_1", "holding_register", 1)
+        await test_scada.add_tag("TAG_3", "plc_2", "coil", 0)
 
         all_tags = await test_scada.get_all_tags()
         assert len(all_tags) == 3
@@ -380,12 +383,13 @@ class TestSCADAServerTags:
 class TestSCADAServerAlarms:
     """Test SCADA server alarm management."""
 
+    @pytest.mark.asyncio
     async def test_raise_high_alarm(self, test_scada):
         """Test raising high alarm.
 
         WHY: High alarms indicate values above limits.
         """
-        test_scada.add_tag(
+        await test_scada.add_tag(
             tag_name="PRESSURE",
             device_name="plc_1",
             address_type="holding_register",
@@ -406,12 +410,13 @@ class TestSCADAServerAlarms:
         assert alarm.alarm_type == "high"
         assert alarm.value == 110.0
 
+    @pytest.mark.asyncio
     async def test_raise_low_alarm(self, test_scada):
         """Test raising low alarm.
 
         WHY: Low alarms indicate values below limits.
         """
-        test_scada.add_tag(
+        await test_scada.add_tag(
             tag_name="LEVEL",
             device_name="plc_1",
             address_type="holding_register",
@@ -428,12 +433,13 @@ class TestSCADAServerAlarms:
         alarm = test_scada.active_alarms[0]
         assert alarm.alarm_type == "low"
 
+    @pytest.mark.asyncio
     async def test_no_duplicate_alarms(self, test_scada):
         """Test that duplicate alarms are not raised.
 
         WHY: Only one active alarm per tag/type.
         """
-        test_scada.add_tag(
+        await test_scada.add_tag(
             tag_name="PRESSURE",
             device_name="plc_1",
             address_type="holding_register",

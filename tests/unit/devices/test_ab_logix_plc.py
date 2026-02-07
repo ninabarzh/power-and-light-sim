@@ -37,14 +37,14 @@ class ConcreteABLogixPLC(ABLogixPLC):
     async def _initialise_memory_map(self) -> None:
         """Initialise test tag structure."""
         # Controller-scoped tags
-        self.create_tag("Temperature", LogixDataType.REAL, 0.0)
-        self.create_tag("Pressure", LogixDataType.REAL, 0.0)
-        self.create_tag("Running", LogixDataType.BOOL, False)
-        self.create_tag("Counter", LogixDataType.DINT, 0)
+        await self.create_tag("Temperature", LogixDataType.REAL, 0.0)
+        await self.create_tag("Pressure", LogixDataType.REAL, 0.0)
+        await self.create_tag("Running", LogixDataType.BOOL, False)
+        await self.create_tag("Counter", LogixDataType.DINT, 0)
 
         # Program-scoped tags
-        self.create_tag("Setpoint", LogixDataType.REAL, 100.0, program="MainProgram")
-        self.create_tag("Mode", LogixDataType.DINT, 0, program="MainProgram")
+        await self.create_tag("Setpoint", LogixDataType.REAL, 100.0, program="MainProgram")
+        await self.create_tag("Mode", LogixDataType.DINT, 0, program="MainProgram")
 
         self.memory_map = {"tags": self.get_all_tags()}
 
@@ -52,8 +52,8 @@ class ConcreteABLogixPLC(ABLogixPLC):
         """Read inputs (simulated)."""
         self.read_inputs_count += 1
         # Simulate sensor readings
-        self.write_tag("Temperature", 25.0 + self.read_inputs_count * 0.1)
-        self.write_tag("Counter", self.read_inputs_count)
+        await self.write_tag("Temperature", 25.0 + self.read_inputs_count * 0.1)
+        await self.write_tag("Counter", self.read_inputs_count)
 
     async def _execute_logic(self) -> None:
         """Execute ladder logic."""
@@ -61,7 +61,7 @@ class ConcreteABLogixPLC(ABLogixPLC):
         # Simple logic: set running if temp < setpoint
         temp = self.read_tag("Temperature")
         setpoint = self.read_tag("Program:MainProgram.Setpoint")
-        self.write_tag("Running", temp < setpoint)
+        await self.write_tag("Running", temp < setpoint)
 
     async def _write_outputs(self) -> None:
         """Write outputs."""
@@ -166,46 +166,52 @@ class TestABLogixPLCInitialization:
 class TestABLogixPLCTagCreation:
     """Test ABLogixPLC tag creation."""
 
-    def test_create_controller_tag(self, logix_plc):
+    @pytest.mark.asyncio
+    async def test_create_controller_tag(self, logix_plc):
         """Test creating controller-scoped tag."""
-        result = logix_plc.create_tag("NewTag", LogixDataType.REAL, 0.0)
+        result = await logix_plc.create_tag("NewTag", LogixDataType.REAL, 0.0)
 
         assert result is True
         assert "NewTag" in logix_plc.controller_tags
 
-    def test_create_program_tag(self, logix_plc):
+    @pytest.mark.asyncio
+    async def test_create_program_tag(self, logix_plc):
         """Test creating program-scoped tag."""
-        result = logix_plc.create_tag(
+        result = await logix_plc.create_tag(
             "LocalTag", LogixDataType.DINT, 0, program="MainProgram"
         )
 
         assert result is True
         assert "LocalTag" in logix_plc.programs["MainProgram"].tags
 
-    def test_create_duplicate_tag_fails(self, logix_plc):
+    @pytest.mark.asyncio
+    async def test_create_duplicate_tag_fails(self, logix_plc):
         """Test that creating duplicate tag fails."""
-        logix_plc.create_tag("DupTag", LogixDataType.BOOL, False)
-        result = logix_plc.create_tag("DupTag", LogixDataType.BOOL, True)
+        await logix_plc.create_tag("DupTag", LogixDataType.BOOL, False)
+        result = await logix_plc.create_tag("DupTag", LogixDataType.BOOL, True)
 
         assert result is False
 
-    def test_create_bool_tag_convenience(self, logix_plc):
+    @pytest.mark.asyncio
+    async def test_create_bool_tag_convenience(self, logix_plc):
         """Test create_bool_tag convenience method."""
-        result = logix_plc.create_bool_tag("BoolFlag", True)
+        result = await logix_plc.create_bool_tag("BoolFlag", True)
 
         assert result is True
         assert logix_plc.controller_tags["BoolFlag"].data_type == LogixDataType.BOOL
 
-    def test_create_dint_tag_convenience(self, logix_plc):
+    @pytest.mark.asyncio
+    async def test_create_dint_tag_convenience(self, logix_plc):
         """Test create_dint_tag convenience method."""
-        result = logix_plc.create_dint_tag("IntValue", 42)
+        result = await logix_plc.create_dint_tag("IntValue", 42)
 
         assert result is True
         assert logix_plc.controller_tags["IntValue"].data_type == LogixDataType.DINT
 
-    def test_create_real_tag_convenience(self, logix_plc):
+    @pytest.mark.asyncio
+    async def test_create_real_tag_convenience(self, logix_plc):
         """Test create_real_tag convenience method."""
-        result = logix_plc.create_real_tag("FloatValue", 3.14)
+        result = await logix_plc.create_real_tag("FloatValue", 3.14)
 
         assert result is True
         assert logix_plc.controller_tags["FloatValue"].data_type == LogixDataType.REAL
@@ -242,7 +248,7 @@ class TestABLogixPLCTagOperations:
     @pytest.mark.asyncio
     async def test_write_controller_tag(self, started_logix_plc):
         """Test writing controller-scoped tag."""
-        result = started_logix_plc.write_tag("Pressure", 150.0)
+        result = await started_logix_plc.write_tag("Pressure", 150.0)
 
         assert result is True
         assert started_logix_plc.read_tag("Pressure") == 150.0
@@ -250,7 +256,7 @@ class TestABLogixPLCTagOperations:
     @pytest.mark.asyncio
     async def test_write_program_tag(self, started_logix_plc):
         """Test writing program-scoped tag."""
-        result = started_logix_plc.write_tag("Program:MainProgram.Mode", 2)
+        result = await started_logix_plc.write_tag("Program:MainProgram.Mode", 2)
 
         assert result is True
         assert started_logix_plc.read_tag("Program:MainProgram.Mode") == 2
@@ -258,7 +264,7 @@ class TestABLogixPLCTagOperations:
     @pytest.mark.asyncio
     async def test_write_nonexistent_tag(self, started_logix_plc):
         """Test writing non-existent tag fails."""
-        result = started_logix_plc.write_tag("FakeTag", 0)
+        result = await started_logix_plc.write_tag("FakeTag", 0)
 
         assert result is False
 
@@ -266,18 +272,18 @@ class TestABLogixPLCTagOperations:
     async def test_write_type_conversion(self, started_logix_plc):
         """Test automatic type conversion on write."""
         # Write string "42" to DINT tag
-        started_logix_plc.write_tag("Counter", "42")
+        await started_logix_plc.write_tag("Counter", "42")
 
         assert started_logix_plc.read_tag("Counter") == 42
 
     @pytest.mark.asyncio
     async def test_read_only_tag(self, started_logix_plc):
         """Test writing to read-only tag fails."""
-        started_logix_plc.create_tag(
+        await started_logix_plc.create_tag(
             "ReadOnly", LogixDataType.DINT, 100, read_only=True
         )
 
-        result = started_logix_plc.write_tag("ReadOnly", 200)
+        result = await started_logix_plc.write_tag("ReadOnly", 200)
 
         assert result is False
         assert started_logix_plc.read_tag("ReadOnly") == 100
@@ -304,7 +310,7 @@ class TestABLogixPLCGetAllTags:
     @pytest.mark.asyncio
     async def test_get_all_tags_values(self, started_logix_plc):
         """Test that tag values are correct."""
-        started_logix_plc.write_tag("Temperature", 55.5)
+        await started_logix_plc.write_tag("Temperature", 55.5)
 
         tags = started_logix_plc.get_all_tags()
 

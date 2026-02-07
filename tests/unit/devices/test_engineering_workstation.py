@@ -212,12 +212,13 @@ class TestEngineeringWorkstationInitialization:
 class TestEngineeringWorkstationProjects:
     """Test project management."""
 
-    def test_add_project(self, test_eng_ws):
+    @pytest.mark.asyncio
+    async def test_add_project(self, test_eng_ws):
         """Test adding a project.
 
         WHY: Workstations store project files.
         """
-        test_eng_ws.add_project(
+        await test_eng_ws.add_project(
             project_name="turbine_control",
             device_name="turbine_plc_1",
             file_type="plc_program",
@@ -230,24 +231,26 @@ class TestEngineeringWorkstationProjects:
         assert project.file_type == "plc_program"
         assert project.contains_credentials is True  # Default
 
-    def test_add_project_uses_simulation_time(self, test_eng_ws, clean_simulation_time):
+    @pytest.mark.asyncio
+    async def test_add_project_uses_simulation_time(self, test_eng_ws, clean_simulation_time):
         """Test that project last_modified uses simulation time.
 
         WHY: Timestamps must use sim_time, not wall clock.
         """
         sim_time = clean_simulation_time
 
-        test_eng_ws.add_project("test", "device", "plc_program")
+        await test_eng_ws.add_project("test", "device", "plc_program")
 
         project = test_eng_ws.projects[0]
         assert project.last_modified == sim_time.now()
 
-    def test_add_project_custom_path(self, test_eng_ws):
+    @pytest.mark.asyncio
+    async def test_add_project_custom_path(self, test_eng_ws):
         """Test adding project with custom file path.
 
         WHY: Projects can be stored anywhere.
         """
-        test_eng_ws.add_project(
+        await test_eng_ws.add_project(
             project_name="custom",
             device_name="device",
             file_type="plc_program",
@@ -256,35 +259,38 @@ class TestEngineeringWorkstationProjects:
 
         assert test_eng_ws.projects[0].file_path == "D:\\MyProjects\\custom.acd"
 
-    def test_add_project_default_path(self, test_eng_ws):
+    @pytest.mark.asyncio
+    async def test_add_project_default_path(self, test_eng_ws):
         """Test that default path is generated.
 
         WHY: Convenience for typical project storage.
         """
-        test_eng_ws.add_project("myproject", "device", "plc_program")
+        await test_eng_ws.add_project("myproject", "device", "plc_program")
 
         assert (
             test_eng_ws.projects[0].file_path == "C:\\Projects\\myproject.plc_program"
         )
 
-    def test_add_multiple_projects(self, test_eng_ws):
+    @pytest.mark.asyncio
+    async def test_add_multiple_projects(self, test_eng_ws):
         """Test adding multiple projects.
 
         WHY: Workstations have many project files.
         """
-        test_eng_ws.add_project("project1", "plc_1", "plc_program")
-        test_eng_ws.add_project("project2", "plc_2", "scada_config")
-        test_eng_ws.add_project("project3", "hmi_1", "hmi_project")
+        await test_eng_ws.add_project("project1", "plc_1", "plc_program")
+        await test_eng_ws.add_project("project2", "plc_2", "scada_config")
+        await test_eng_ws.add_project("project3", "hmi_1", "hmi_project")
 
         assert len(test_eng_ws.projects) == 3
 
-    def test_get_project(self, test_eng_ws):
+    @pytest.mark.asyncio
+    async def test_get_project(self, test_eng_ws):
         """Test getting a project by name.
 
         WHY: Need to retrieve specific projects.
         """
-        test_eng_ws.add_project("target", "device", "plc_program")
-        test_eng_ws.add_project("other", "device2", "scada_config")
+        await test_eng_ws.add_project("target", "device", "plc_program")
+        await test_eng_ws.add_project("other", "device2", "scada_config")
 
         project = test_eng_ws.get_project("target")
         assert project is not None
@@ -298,30 +304,32 @@ class TestEngineeringWorkstationProjects:
         project = test_eng_ws.get_project("nonexistent")
         assert project is None
 
-    def test_get_project_credentials(self, test_eng_ws):
+    @pytest.mark.asyncio
+    async def test_get_project_credentials(self, test_eng_ws):
         """Test getting credentials from project.
 
         WHY: Simulates credential extraction vulnerability.
         """
-        test_eng_ws.add_project(
+        await test_eng_ws.add_project(
             "with_creds", "plc_1", "plc_program", has_credentials=True
         )
 
-        creds = test_eng_ws.get_project_credentials("with_creds")
+        creds = await test_eng_ws.get_project_credentials("with_creds")
         assert creds is not None
         assert "plc_password" in creds
         assert "scada_db_password" in creds
 
-    def test_get_credentials_no_creds_project(self, test_eng_ws):
+    @pytest.mark.asyncio
+    async def test_get_credentials_no_creds_project(self, test_eng_ws):
         """Test getting credentials from project without credentials.
 
         WHY: Not all projects store credentials.
         """
-        test_eng_ws.add_project(
+        await test_eng_ws.add_project(
             "no_creds", "plc_1", "plc_program", has_credentials=False
         )
 
-        creds = test_eng_ws.get_project_credentials("no_creds")
+        creds = await test_eng_ws.get_project_credentials("no_creds")
         assert creds is None
 
 
@@ -331,56 +339,61 @@ class TestEngineeringWorkstationProjects:
 class TestEngineeringWorkstationUser:
     """Test user management."""
 
-    def test_login(self, test_eng_ws):
+    @pytest.mark.asyncio
+    async def test_login(self, test_eng_ws):
         """Test user login.
 
         WHY: Users must authenticate.
         """
-        result = test_eng_ws.login("engineer")
+        result = await test_eng_ws.login("engineer")
 
         assert result is True
         assert test_eng_ws.current_user == "engineer"
         assert test_eng_ws.login_time >= 0.0
 
-    def test_login_uses_simulation_time(self, test_eng_ws, clean_simulation_time):
+    @pytest.mark.asyncio
+    async def test_login_uses_simulation_time(self, test_eng_ws, clean_simulation_time):
         """Test that login uses simulation time.
 
         WHY: Login time must use sim_time.
         """
         sim_time = clean_simulation_time
 
-        test_eng_ws.login("engineer")
+        await test_eng_ws.login("engineer")
 
         assert test_eng_ws.login_time == sim_time.now()
 
-    def test_login_wrong_username(self, test_eng_ws):
+    @pytest.mark.asyncio
+    async def test_login_wrong_username(self, test_eng_ws):
         """Test login with wrong username.
 
         WHY: Should fail for unknown users.
         """
-        result = test_eng_ws.login("unknown_user")
+        result = await test_eng_ws.login("unknown_user")
 
         assert result is False
         assert test_eng_ws.current_user == ""
 
-    def test_logout(self, test_eng_ws):
+    @pytest.mark.asyncio
+    async def test_logout(self, test_eng_ws):
         """Test user logout.
 
         WHY: Users log out when done.
         """
-        test_eng_ws.login("engineer")
-        test_eng_ws.logout()
+        await test_eng_ws.login("engineer")
+        await test_eng_ws.logout()
 
         assert test_eng_ws.current_user == ""
         assert test_eng_ws.login_time == 0.0
 
-    def test_logout_when_not_logged_in(self, test_eng_ws):
+    @pytest.mark.asyncio
+    async def test_logout_when_not_logged_in(self, test_eng_ws):
         """Test logout when no user logged in.
 
         WHY: Should handle gracefully.
         """
         # Should not raise
-        test_eng_ws.logout()
+        await test_eng_ws.logout()
         assert test_eng_ws.current_user == ""
 
 
@@ -406,7 +419,7 @@ class TestEngineeringWorkstationProgramming:
 
         WHY: Logged in users can program PLCs.
         """
-        started_eng_ws.login("engineer")
+        await started_eng_ws.login("engineer")
 
         result = await started_eng_ws.program_plc("plc_1", {"logic": "test"})
         assert result is True
@@ -441,8 +454,8 @@ class TestEngineeringWorkstationMemoryMap:
         """
         await test_eng_ws._initialise_memory_map()
 
-        test_eng_ws.login("engineer")
-        test_eng_ws.add_project("test", "device", "plc_program")
+        await test_eng_ws.login("engineer")
+        await test_eng_ws.add_project("test", "device", "plc_program")
 
         await test_eng_ws._scan_cycle()
 
@@ -463,8 +476,8 @@ class TestEngineeringWorkstationStatus:
 
         WHY: Status API must be complete.
         """
-        started_eng_ws.login("engineer")
-        started_eng_ws.add_project("test", "device", "plc_program")
+        await started_eng_ws.login("engineer")
+        await started_eng_ws.add_project("test", "device", "plc_program")
 
         await asyncio.sleep(0.02)
 

@@ -265,19 +265,21 @@ class TestHMIWorkstationScreens:
 class TestHMIWorkstationOperator:
     """Test HMI operator management."""
 
-    def test_login_operator(self, test_hmi):
+    @pytest.mark.asyncio
+    async def test_login_operator(self, test_hmi):
         """Test operator login.
 
         WHY: Operators must authenticate.
         """
-        result = test_hmi.login_operator("operator1")
+        result = await test_hmi.login_operator("operator1")
 
         assert result is True
         assert test_hmi.operator_logged_in is True
         assert test_hmi.operator_name == "operator1"
         assert test_hmi.login_time >= 0.0
 
-    def test_login_uses_simulation_time(self, test_hmi, clean_simulation_time):
+    @pytest.mark.asyncio
+    async def test_login_uses_simulation_time(self, test_hmi, clean_simulation_time):
         """Test that login uses simulation time.
 
         WHY: Login time must use sim_time, not wall clock.
@@ -285,30 +287,32 @@ class TestHMIWorkstationOperator:
         sim_time = clean_simulation_time
         # Note: sim_time.now() returns simulation time
 
-        test_hmi.login_operator("operator1")
+        await test_hmi.login_operator("operator1")
 
         # Login time should be from simulation time
         assert test_hmi.login_time == sim_time.now()
 
-    def test_logout_operator(self, test_hmi):
+    @pytest.mark.asyncio
+    async def test_logout_operator(self, test_hmi):
         """Test operator logout.
 
         WHY: Operators log out when done.
         """
-        test_hmi.login_operator("operator1")
-        test_hmi.logout_operator()
+        await test_hmi.login_operator("operator1")
+        await test_hmi.logout_operator()
 
         assert test_hmi.operator_logged_in is False
         assert test_hmi.operator_name == ""
         assert test_hmi.login_time == 0.0
 
-    def test_logout_when_not_logged_in(self, test_hmi):
+    @pytest.mark.asyncio
+    async def test_logout_when_not_logged_in(self, test_hmi):
         """Test logout when no operator logged in.
 
         WHY: Should handle gracefully.
         """
         # Should not raise
-        test_hmi.logout_operator()
+        await test_hmi.logout_operator()
         assert test_hmi.operator_logged_in is False
 
 
@@ -345,7 +349,7 @@ class TestHMIWorkstationSCADA:
 
         WHY: Logged in operators can send commands.
         """
-        started_hmi.login_operator("operator1")
+        await started_hmi.login_operator("operator1")
 
         result = await started_hmi.send_command_to_scada(
             "test_device", "holding_register", 0, 100
@@ -409,7 +413,7 @@ class TestHMIWorkstationMemoryMap:
 
         test_hmi.add_screen("test_screen", [], [])
         test_hmi.navigate_to_screen("test_screen")
-        test_hmi.login_operator("test_operator")
+        await test_hmi.login_operator("test_operator")
         test_hmi.screen_data = {"TAG1": 42}
 
         await test_hmi._process_polled_data()
@@ -426,12 +430,13 @@ class TestHMIWorkstationMemoryMap:
 class TestHMIWorkstationSecurity:
     """Test HMI security characteristics."""
 
-    def test_get_config_file_contents(self, test_hmi):
+    @pytest.mark.asyncio
+    async def test_get_config_file_contents(self, test_hmi):
         """Test getting config file contents.
 
         WHY: Simulates plaintext credential vulnerability.
         """
-        config = test_hmi.get_config_file_contents()
+        config = await test_hmi.get_config_file_contents()
 
         assert "scada_server" in config
         assert "scada_password" in config
@@ -453,7 +458,7 @@ class TestHMIWorkstationStatus:
         WHY: Status API must be complete.
         """
         started_hmi.add_screen("test", [], [])
-        started_hmi.login_operator("operator1")
+        await started_hmi.login_operator("operator1")
 
         await asyncio.sleep(0.02)
 
@@ -473,7 +478,7 @@ class TestHMIWorkstationStatus:
 
         WHY: Telemetry provides comprehensive status.
         """
-        started_hmi.login_operator("operator1")
+        await started_hmi.login_operator("operator1")
 
         telemetry = await started_hmi.get_telemetry()
 

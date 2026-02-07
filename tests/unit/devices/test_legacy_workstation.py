@@ -242,22 +242,24 @@ class TestLegacyWorkstationSecurity:
         assert "TURBINE_DATA" in shares["shares"]
         assert shares["shares"]["TURBINE_DATA"]["password_required"] is False
 
-    def test_access_share_without_password(self, test_legacy):
+    @pytest.mark.asyncio
+    async def test_access_share_without_password(self, test_legacy):
         """Test accessing shares without authentication.
 
         WHY: Everyone:Full Control
         """
-        result = test_legacy.access_share("TURBINE_DATA")
+        result = await test_legacy.access_share("TURBINE_DATA")
 
         assert result["success"] is True
         assert "No password required" in result["note"]
 
-    def test_admin_share_accessible(self, test_legacy):
+    @pytest.mark.asyncio
+    async def test_admin_share_accessible(self, test_legacy):
         """Test C$ admin share is accessible.
 
         WHY: Admin has no password.
         """
-        result = test_legacy.access_share("C$")
+        result = await test_legacy.access_share("C$")
         assert result["success"] is True
 
     def test_enumerate_vulnerabilities(self, test_legacy):
@@ -284,33 +286,36 @@ class TestLegacyWorkstationSecurity:
 class TestLegacyWorkstationCredentials:
     """Test credential discovery."""
 
-    def test_stored_credentials_exist(self, test_legacy):
+    @pytest.mark.asyncio
+    async def test_stored_credentials_exist(self, test_legacy):
         """Test that credentials are stored in plaintext.
 
         WHY: Security wasn't a priority in 1998.
         """
-        creds = test_legacy.get_stored_credentials()
+        creds = await test_legacy.get_stored_credentials()
 
         assert "turbine_plc" in creds
         assert creds["turbine_plc"]["plaintext"] is True
         assert creds["turbine_plc"]["password"] == "turbine98"
 
-    def test_post_it_notes_with_passwords(self, test_legacy):
+    @pytest.mark.asyncio
+    async def test_post_it_notes_with_passwords(self, test_legacy):
         """Test passwords on sticky notes.
 
         WHY: Classic.
         """
-        creds = test_legacy.get_stored_credentials()
+        creds = await test_legacy.get_stored_credentials()
 
         assert "post_it_note_1" in creds
         assert "keyboard" in creds["post_it_note_2"]["location"].lower()
 
-    def test_vendor_credentials_still_there(self, test_legacy):
+    @pytest.mark.asyncio
+    async def test_vendor_credentials_still_there(self, test_legacy):
         """Test vendor support credentials from 1998.
 
         WHY: Company is bankrupt, but credentials live on.
         """
-        creds = test_legacy.get_stored_credentials()
+        creds = await test_legacy.get_stored_credentials()
 
         assert "vendor_support" in creds
         vendor = creds["vendor_support"]
@@ -324,12 +329,13 @@ class TestLegacyWorkstationCredentials:
 class TestLegacyWorkstationArchaeology:
     """Test filesystem exploration."""
 
-    def test_explore_filesystem_finds_artifacts(self, test_legacy):
+    @pytest.mark.asyncio
+    async def test_explore_filesystem_finds_artifacts(self, test_legacy):
         """Test filesystem exploration finds interesting things.
 
         WHY: 25 years of accumulated digital artifacts.
         """
-        artifacts = test_legacy.explore_filesystem()
+        artifacts = await test_legacy.explore_filesystem()
 
         assert len(artifacts) > 0
         assert all(isinstance(a, DiscoveredArtifact) for a in artifacts)
@@ -339,12 +345,13 @@ class TestLegacyWorkstationArchaeology:
         assert config_artifact is not None
         assert config_artifact.security_relevant is True
 
-    def test_find_25_years_of_data(self, test_legacy):
+    @pytest.mark.asyncio
+    async def test_find_25_years_of_data(self, test_legacy):
         """Test that 25 years of data is available.
 
         WHY: This is why it can't be retired.
         """
-        artifacts = test_legacy.explore_filesystem()
+        artifacts = await test_legacy.explore_filesystem()
 
         data_artifact = next(
             (a for a in artifacts if "turbine_log.csv" in a.name), None
@@ -352,12 +359,13 @@ class TestLegacyWorkstationArchaeology:
         assert data_artifact is not None
         assert data_artifact.contents.get("years") == 25
 
-    def test_find_post_it_notes(self, test_legacy):
+    @pytest.mark.asyncio
+    async def test_find_post_it_notes(self, test_legacy):
         """Test finding post-it notes.
 
         WHY: Physical security artifacts.
         """
-        artifacts = test_legacy.explore_filesystem()
+        artifacts = await test_legacy.explore_filesystem()
 
         postit = next((a for a in artifacts if "Post-it" in a.name), None)
         assert postit is not None
@@ -374,7 +382,8 @@ class TestLegacyWorkstationArchaeology:
         readable = [d for d in test_legacy.floppy_disks_in_drawer if d.get("readable")]
         assert len(readable) > 0
 
-    def test_read_floppy_disk_success(self, test_legacy):
+    @pytest.mark.asyncio
+    async def test_read_floppy_disk_success(self, test_legacy):
         """Test reading a floppy disk that works."""
         # Find a readable disk
         readable_idx = next(
@@ -383,10 +392,11 @@ class TestLegacyWorkstationArchaeology:
             if d.get("readable", False)
         )
 
-        result = test_legacy.read_floppy_disk(readable_idx)
+        result = await test_legacy.read_floppy_disk(readable_idx)
         assert result["success"] is True
 
-    def test_read_floppy_disk_failure(self, test_legacy):
+    @pytest.mark.asyncio
+    async def test_read_floppy_disk_failure(self, test_legacy):
         """Test reading a corrupted floppy disk.
 
         WHY: They're 25 years old.
@@ -398,7 +408,7 @@ class TestLegacyWorkstationArchaeology:
             if not d.get("readable", True)
         )
 
-        result = test_legacy.read_floppy_disk(unreadable_idx)
+        result = await test_legacy.read_floppy_disk(unreadable_idx)
         assert result["success"] is False
         assert "error" in result
 
