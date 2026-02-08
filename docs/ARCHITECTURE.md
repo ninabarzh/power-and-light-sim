@@ -1,7 +1,7 @@
-# Power and Light Simulator - Architecture Documentation
+# Power and Light simulator - Architecture documentation
 
 Architecture of the Power and Light ICS Simulator, including both implemented and partially-integrated components. 
-It serves as a reference for understanding dependencies and identifying architectural inconsistencies.
+Serves as a reference for understanding dependencies and identifying architectural inconsistencies.
 
 ## Overview
 
@@ -27,9 +27,9 @@ The simulator is designed around the following principles:
 ┌────────────────────▼────────────────────────────────────────────┐
 │                    Orchestration Layer                          │
 │                   (SimulatorManager)                            │
-│  - Initialisation and lifecycle management                     │
-│  - Component coordination                                      │
-└────┬─────────┬──────────┬───────────┬──────────┬──────────────┘
+│  - Initialisation and lifecycle management                      │
+│  - Component coordination                                       │
+└────┬─────────┬──────────┬───────────┬──────────┬────────────────┘
      │         │          │           │          │
      ▼         ▼          ▼           ▼          ▼
 ┌─────────┐ ┌────────┐ ┌─────────┐ ┌────────┐ ┌──────────────┐
@@ -344,7 +344,7 @@ class ModbusProtocol(BaseProtocol):
         return await self.adapter.read_holding_registers(address, count)
 ```
 
-### State Management
+### State management
 
 #### SystemState (Singleton)
 
@@ -420,7 +420,7 @@ class DataStore:
         """Bulk write to memory map."""
 ```
 
-### 4. SimulationTime (Singleton)
+### SimulationTime (Singleton)
 
 Unified time management for all components.
 
