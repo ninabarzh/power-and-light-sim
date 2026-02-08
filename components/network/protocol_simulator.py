@@ -349,6 +349,13 @@ class _Listener:
             )
         finally:
             self.active_connections -= 1
+            # Ensure writer is closed
+            if not writer.is_closing():
+                writer.close()
+                try:
+                    await writer.wait_closed()
+                except Exception:
+                    pass  # Ignore errors during cleanup
             self.logger.debug(
                 f"Connection closed: {client_addr} -> {self.node}:{self.port}"
             )

@@ -63,6 +63,10 @@ class NetworkSimulator:
         self.inter_zone_policies: list[dict[str, Any]] = []
         self.network_to_zone: dict[str, str] = {}  # network_name -> zone_name
 
+        # Network segmentation control
+        self.segmentation_enabled: bool = False
+        self.segmentation_mode: str = "none"
+
         self._lock = asyncio.Lock()
         self._loaded = False
         self.logger: ICSLogger = get_logger(__name__, device="network_simulator")
@@ -83,6 +87,16 @@ class NetworkSimulator:
         async with self._lock:
             try:
                 config = self.config_loader.load_all()
+
+                # Load segmentation settings
+                seg_config = config.get("segmentation", {})
+                self.segmentation_enabled = seg_config.get("enabled", False)
+                self.segmentation_mode = seg_config.get("mode", "none")
+
+                self.logger.info(
+                    f"Network segmentation: enabled={self.segmentation_enabled}, "
+                    f"mode={self.segmentation_mode}"
+                )
 
                 # Load network definitions from zones hierarchy
                 # Support both flat "networks" list and hierarchical "zones" structure
@@ -285,6 +299,46 @@ class NetworkSimulator:
         """
         return self.network_to_zone.get(network_name)
 
+    def _check_common_mode_policy(
+        self,
+        src_zone: str,
+        dst_zone: str,
+        protocol: str,
+        port: int,
+    ) -> tuple[bool, str]:
+        """Check if zone-to-zone connection is allowed in 'common' mode.
+
+        Common mode merges control_zone and operations_zone (and DMZ) into
+        a single operational network, but keeps enterprise_zone isolated.
+
+        This reflects many real-world deployments where the OT network
+        (control + supervisory) is merged for operational convenience,
+        but IT systems remain segmented for security.
+
+        Args:
+            src_zone: Source zone name
+            dst_zone: Destination zone name
+            protocol: Protocol being used
+            port: Port being accessed
+
+        Returns:
+            Tuple of (allowed: bool, reason: str)
+        """
+        # Same zone always allowed
+        if src_zone == dst_zone:
+            return True, "same_zone"
+
+        # Define operational zones (merged in common mode)
+        operational_zones = {"control_zone", "operations_zone", "dmz"}
+
+        # Both zones in operational network = allowed
+        if src_zone in operational_zones and dst_zone in operational_zones:
+            return True, "common_mode_operational_network"
+
+        # Enterprise zone is isolated - use strict policy checking
+        # This ensures enterprise can only talk to DMZ with proper rules
+        return self._check_zone_policy(src_zone, dst_zone, protocol, port)
+
     def _check_zone_policy(
         self,
         src_zone: str,
@@ -477,7 +531,15 @@ class NetworkSimulator:
                 )
                 return True
 
-            # Check 2: Different networks - check zone-based policies
+            # Check 2: If segmentation disabled or mode is "none", allow all cross-zone traffic
+            if not self.segmentation_enabled or self.segmentation_mode == "none":
+                self.logger.debug(
+                    f"Reachability allowed: {src_network} -> {dst_node}:{port} "
+                    f"({protocol}) [segmentation disabled or mode=none]"
+                )
+                return True
+
+            # Check 3: Different networks - check zone-based policies
             src_zone = self._get_zone_for_network(src_network)
             dst_zone = None
 
@@ -506,10 +568,16 @@ class NetworkSimulator:
                 )
                 return False
 
-            # Check zone-based policy
-            allowed, reason = self._check_zone_policy(
-                src_zone, dst_zone, protocol, port
-            )
+            # Check zone-based policy according to segmentation mode
+            if self.segmentation_mode == "common":
+                allowed, reason = self._check_common_mode_policy(
+                    src_zone, dst_zone, protocol, port
+                )
+            else:
+                # "strict" or "custom" modes use inter_zone_policies from config
+                allowed, reason = self._check_zone_policy(
+                    src_zone, dst_zone, protocol, port
+                )
 
             if allowed:
                 self.logger.debug(

@@ -34,6 +34,7 @@ class ConfigLoader:
         if network_path.exists():
             with open(network_path) as f:
                 network_data = yaml.safe_load(f)
+                config["segmentation"] = network_data.get("segmentation", {})
                 config["zones"] = network_data.get("zones", [])
                 config["networks"] = network_data.get("networks", [])
                 config["connections"] = network_data.get("connections", {})
@@ -42,6 +43,7 @@ class ConfigLoader:
                 )
                 config["physical_topology"] = network_data.get("physical_topology", {})
         else:
+            config["segmentation"] = {}
             config["zones"] = []
             config["networks"] = []
             config["connections"] = {}

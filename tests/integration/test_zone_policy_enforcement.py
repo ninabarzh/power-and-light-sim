@@ -25,10 +25,16 @@ async def network_simulator():
     """Create and load NetworkSimulator with full configuration.
 
     WHY: Integration test needs real configuration with zones and policies.
+    NOTE: These tests verify zone policy enforcement, so segmentation is enabled.
     """
     config_loader = ConfigLoader()
     net_sim = NetworkSimulator(config_loader)
     await net_sim.load()
+
+    # Enable segmentation for zone policy enforcement tests
+    net_sim.segmentation_enabled = True
+    net_sim.segmentation_mode = "strict"
+
     return net_sim
 
 

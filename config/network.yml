@@ -8,6 +8,24 @@
 # - Level 3.5: DMZ (data diodes, jump servers)
 # - Level 4: Enterprise Zone (historians, business systems)
 
+# ================================================================
+# NETWORK SEGMENTATION CONTROL
+# Controls whether and how network segmentation is enforced
+# ================================================================
+segmentation:
+  # Toggle network segmentation enforcement
+  enabled: false  # false = all doors open (good for students/learning)
+                  # true = enforce segmentation based on mode
+
+  # Segmentation mode (only applies when enabled: true)
+  mode: "none"  # Options: none, strict, common, custom
+
+  # Mode descriptions (reference only):
+  # - none: No enforcement, all devices can reach each other
+  # - strict: Full Purdue Model with all zones separate (uses inter_zone_routing rules below)
+  # - common: Enterprise isolated, but operations+control zones merged (realistic for many deployments)
+  # - custom: Use inter_zone_routing rules as-is for custom segmentation patterns
+
 zones:
   # ================================================================
   # CONTROL ZONE - Purdue Level 0-2

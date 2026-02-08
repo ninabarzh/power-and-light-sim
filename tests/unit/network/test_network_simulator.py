@@ -43,6 +43,10 @@ def simple_network_config(temp_config_dir):
 def segmented_network_config(temp_config_dir):
     """Create segmented network configuration."""
     config = {
+        "segmentation": {
+            "enabled": True,
+            "mode": "strict",
+        },
         "networks": [
             {"name": "control_network", "vlan": 100},
             {"name": "corporate_network", "vlan": 200},
