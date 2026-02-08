@@ -33,11 +33,11 @@ class S7Protocol(BaseProtocol):
     # lifecycle
     # ------------------------------------------------------------
 
-    async def connect(self):
+    async def connect(self) -> bool:
         self.connected = await self.adapter.connect()
         return self.connected
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         if self.connected:
             await self.adapter.disconnect()
         self.connected = False
@@ -46,7 +46,7 @@ class S7Protocol(BaseProtocol):
     # recon
     # ------------------------------------------------------------
 
-    async def probe(self):
+    async def probe(self) -> dict[str, object]:
         result = {
             "protocol": self.protocol_name,
             "connected": self.connected,
@@ -75,20 +75,20 @@ class S7Protocol(BaseProtocol):
     # exploitation primitives
     # ------------------------------------------------------------
 
-    async def read_db(self, db, start, size):
+    async def read_db(self, db: int, start: int, size: int) -> bytes:
         return await self.adapter.read_db(db, start, size)
 
-    async def write_db(self, db, start, data):
+    async def write_db(self, db: int, start: int, data: bytes) -> None:
         return await self.adapter.write_db(db, start, data)
 
-    async def read_bool(self, db, byte, bit):
+    async def read_bool(self, db: int, byte: int, bit: int) -> bool:
         return await self.adapter.read_bool(db, byte, bit)
 
-    async def write_bool(self, db, byte, bit, value):
+    async def write_bool(self, db: int, byte: int, bit: int, value: bool) -> None:
         return await self.adapter.write_bool(db, byte, bit, value)
 
-    async def stop_plc(self):
+    async def stop_plc(self) -> None:
         return await self.adapter.stop_plc()
 
-    async def start_plc(self):
+    async def start_plc(self) -> None:
         return await self.adapter.start_plc()
