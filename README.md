@@ -2,7 +2,7 @@
 
 ![Version](https://img.shields.io/badge/status-active%20development-orange)
 ![Python](https://img.shields.io/badge/python-3.12+-blue)
-[![codecov](https://codecov.io/github/ninabarzh/power-and-light-sim/graph/badge.svg?token=O4L0ABOK5W)](https://codecov.io/github/ninabarzh/power-and-light-sim)
+[![codecov](https://codecov.io/github/tymyrddin/power-and-light-sim/graph/badge.svg?token=O4L0ABOK5W)](https://codecov.io/github/tymyrddin/power-and-light-sim)
 
 *"Ankh-Morpork's quietly indispensable utility, operating from repurposed university basements and one building that 
 insists it was never meant to be a building at all."*
@@ -163,7 +163,7 @@ For SCADA wiring documentation, see [docs/SCADA_WIRING.md](docs/scada_wiring.md)
 
 ```bash
 # Clone and install
-git clone https://github.com/ninabarzh/power-and-light-sim.git
+git clone https://github.com/tymyrddin/power-and-light-sim.git
 cd power-and-light-sim
 pip install -r requirements.txt
 

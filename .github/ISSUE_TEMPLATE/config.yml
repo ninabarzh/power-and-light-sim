@@ -1,11 +1,11 @@
 blank_issues_enabled: true
 contact_links:
   - name: Security Advisory (Private Reporting)
-    url: https://github.com/ninabarzh/power-and-light-sim/security/advisories/new
+    url: https://github.com/tymyrddin/power-and-light-sim/security/advisories/new
     about: Report serious security vulnerabilities privately
   - name: Commercial Licensing Enquiry
     url: https://tymyrddin.dev/contact/
     about: Discuss commercial licensing or paid use cases
   - name: General Questions
-    url: https://github.com/ninabarzh/power-and-light-sim/discussions
+    url: https://github.com/tymyrddin/power-and-light-sim/discussions
     about: Ask questions about usage, architecture, or implementation (if discussions enabled)

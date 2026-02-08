@@ -147,7 +147,7 @@ If you're uncertain whether your idea fits, [ask first](https://tymyrddin.dev/co
 
 ### Check for existing work
 
-- Search [issues](https://github.com/ninabarzh/power-and-light-sim/issues) to avoid duplication
+- Search [issues](https://github.com/tymyrddin/power-and-light-sim/issues) to avoid duplication
 - Large features should have an issue discussing approach before implementation
 - If you're fixing a bug, create an issue first describing the problem
 
@@ -224,7 +224,7 @@ Responsible use:
 
 Responsible disclosure:
 - If you discover a security issue *in this simulator itself* (for example an unintended attack surface), report it privately first
-- Use GitHub's [private security advisory feature](https://github.com/ninabarzh/power-and-light-sim/security/advisories) or contact us directly
+- Use GitHub's [private security advisory feature](https://github.com/tymyrddin/power-and-light-sim/security/advisories) or contact us directly
 
 The goal is to raise the level of security, not lower it.
 
@@ -240,7 +240,7 @@ The goal is to raise the level of security, not lower it.
 
 ```bash
 # Clone repository
-git clone https://github.com/ninabarzh/power-and-light-sim.git
+git clone https://github.com/tymyrddin/power-and-light-sim.git
 cd power-and-light-sim
 
 # Create virtual environment
@@ -314,7 +314,7 @@ Good documentation prevents Ponder having to answer the same questions repeatedl
 
 ## Getting help
 
-- Issues: Use [GitHub issues](https://github.com/ninabarzh/power-and-light-sim/issues) for bugs and feature requests
+- Issues: Use [GitHub issues](https://github.com/tymyrddin/power-and-light-sim/issues) for bugs and feature requests
 - Contact: For licensing, commercial use, or sensitive security topics: https://tymyrddin.dev/contact/
 
 ## Acknowledgements
