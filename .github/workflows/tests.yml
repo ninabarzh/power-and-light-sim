@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [ '3.12' ]
+        python-version: ['3.12']
 
     steps:
       - name: Checkout code
@@ -30,16 +30,13 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov pytest-asyncio
 
-      - name: Run tests
+      - name: Run tests with coverage
         run: |
-          pytest tests/ -v
+          pytest tests/ --cov=. --cov-report=xml --cov-report=term
 
-      - name: Generate coverage report
-        run: |
-          pytest --cov=. --cov-report=xml --cov-report=term
-
-      - name: Upload to Codecov
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}

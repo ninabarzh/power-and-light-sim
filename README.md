@@ -2,6 +2,7 @@
 
 ![Python](https://img.shields.io/badge/python-3.12-blue?logo=python)
 ![Version](https://img.shields.io/badge/status-active%20development-orange)
+[![codecov](https://codecov.io/github/tymyrddin/power-and-light-sim/graph/badge.svg?token=O4L0ABOK5W)](https://codecov.io/github/tymyrddin/power-and-light-sim)
 ![Coffee](https://img.shields.io/badge/coffee-strong-brown)
 ![Fun](https://img.shields.io/badge/fun-yes-orange)
 
